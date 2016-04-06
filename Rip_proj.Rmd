@@ -1,0 +1,98 @@
+---
+title: "Rip"
+output: html_document
+---
+
+Project:  Riparian zone fires in the Sierra Nevadas
+
+Question:  Do droughts change riparian zones from buffers (fire stoppers) to wicks (fire spreaders)? Do riparian management decisions have an effect?
+
+Methods:
+To determine wick vs buffer, I will look at fire severity classes for each fire. A way to test the effect of a riparian zone would be to see correlations between that zone and upland areas not directly adjacent. A buffer should show lesser severity than surrounding areas, and given ignition point, could slow spread of fire on side opposed to ignition start. However, depending on the severity and type, a fire may over throw the riparian zone.  A wick should show higher severity than surrounding areas, and have a positive correlation with areas in along the same slope but not adjacent. 
+
+A way to connect this to drought is to look at streamflows in the area from the riparian zones.  Monthly departures from the long-term streamflow mean could be interpretted as drought.  A question: how long would an area need to have low streamflow to dessicate riparian zone vegetation? 
+
+Obtain fire area/severity from MTBS.
+Obtain riparian management from USDA Region 5: Sierra Nevadas
+Obtain stream discharge from ... not sure.  Perhaps the same source as the recent lab
+
+Riparian zone fire severity could be averaged for initial analysis.  Adjacent areas = same slope, within x distance?
+
+It may be beneficial (at least as far as visualizing the thing) to limit the area by watershed.  
+Or, as Erin suggested, convert the shapefile to raster format
+
+```{r Data Manipulation}
+install.packages("rgdal") #reading from shapefile
+library(rgdal)
+setwd("~/Desktop/RipShap")
+ripshap <- readOGR(dsn = ".", layer = "Export_Output")
+
+install.packages("rgeos") #converting coordinate system to lon/lat with WGS84
+library(rgeos)
+ripshapll <- spTransform(ripshap, CRS("+proj=longlat +datum=WGS84"))
+
+#Found a function on rblogger to convert shapefile to raster, with conversion to lat lon?
+shp2raster <- function(shp, mask.raster, label, value, transform = FALSE, proj.from = NA,
+    proj.to = NA, map = TRUE) {
+    require(raster, rgdal)
+ 
+    # use transform==TRUE if the polygon is not in the same coordinate system as
+    # the output raster, setting proj.from & proj.to to the appropriate
+    # projections
+    if (transform == TRUE) {
+        proj4string(shp) <- proj.from
+        shp <- spTransform(shp, proj.to)
+    }
+ 
+    # convert the shapefile to a raster based on a standardised background
+    # raster
+    r <- rasterize(shp, mask.raster)
+    # set the cells associated with the shapfile to the specified value
+    r[!is.na(r)] <- value
+    # merge the new raster with the mask raster and export to the working
+    # directory as a tif file
+    r <- mask(merge(r, mask.raster), mask.raster, filename = label, format = "GTiff",
+        overwrite = T)
+ 
+    # plot map of new raster
+    if (map == TRUE) {
+        plot(r, main = label, axes = F, box = F)
+    }
+ 
+    names(r) <- label
+    return(r)
+}
+
+sn_mask <- 
+
+library(ggplot2) #converting to a format that ggplot will understand
+rip.points <- fortify(ripshapll)
+rip.broom <- tidy(ripshapll)
+summary(rip.points) #find the mean lat lon to use for mapImage
+
+library(RColorBrewer) #terrain colors for map
+colors <- brewer.pal(9, "BuGn")
+
+library(ggmap) #making map of Area
+mapImage <- get_map(location = c(lon = -119.4, lat = 38.1),
+  color = "color",
+  source = "osm",
+  # maptype = "terrain",
+  zoom = 9)
+
+ggmap(mapImage) +geom_polygon(aes(x = long,
+      y = lat,
+      group = group),
+      data = rip.points,
+    color = colors[9],
+    fill = colors[6],
+    alpha = 0.5) +
+labs(x = "Longitude",
+  y = "Latitude")
+
+ggplot(data = rip.points[1:100000,], aes(x = long, y = lat, group = group)) + geom_polygon() #So 5 million data points are a lot of data points.   Lets subset by a region at first, then maybe do the entire sierras.
+
+library(ggplot2)
+rip.points <- fortify(ripshapll)
+
+```
