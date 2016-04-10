@@ -14,3 +14,122 @@ The drought dataset, of 3 years of standarized moisture deficit greater than 1 s
 One way is to look at the vegetation classifications in the drought cores using either the LDAS or the Landfire classifications.  If there is a mix of vegeteation classes in each year's core, then it may not be possible to compare across regions easily.  However, if droughts seem to dominate in one or two vegetation classes, then I can say something about droughts occuring in x class duing y years and z class during w years. Or something.  
 The LDAS and Landfire vegetation maps are static, built off of data from that last 20 years or so.  I'll have to find support for using this to look at droughts in early century vegetation, but Leroy mentioned that it shouldn't be a concern.  Vegetation was fairly static in the last 100 years, with the most change occuring in the last 20 years or so.
 Still, I'm not entirely happen with this.  Its okay for an initial exploration, but I think we're moving to a point that this simplistic explanation is not providing anything new.  Maybe complementary.  Maybe I have to wrap my mind around how to tell this story, and i'm getting bogged down in telling someone else's story, as it were.  
+
+Code:  
+To start, I need the drought data set.  Lets get the final code version of all_var in here.
+
+```{r global_options, include = FALSE}
+knitr::opts_chunk$set(fig.width = 12, fig.height = 8, warning = FALSE, message = FALSE)
+ndpkg <- function(p){
+    if(!is.element(p,installed.packages()[,1]))
+    {install.packages(p, dep = T)}
+    require(p,character.only = T)
+  }
+sapply(c("ggplot2", "gridExtra","reshape", "mgcv", "dplyr", "maps", "directlabels"), ndpkg)
+mpp <- map_data("state")
+```
+
+```{r drought code}
+load("~/Desktop/Project 1/Data/General/md00.jdata.rda")
+load("~/Desktop/Project 1/Data/General/year.jdata.rda")
+load("~/Desktop/Project 1/Data/General/month.jdata.rda")
+load("~/Desktop/Project 1/Data/General/lat.jdata.rda")
+load("~/Desktop/Project 1/Data/General/lon.jdata.rda")
+load("~/Desktop/Project 1/Data/General/md0.jdata.rda")
+
+#Create a gridded annual md0 index
+md00y <- md00[month==7] #Only need one month of the annual md0
+md00yg <- by(md00y,list(lon[month==7],lat[month==7],year[month==7]),median)
+md00ygs <- aperm(apply(md00yg,1:2,scale), c(2,3,1)) #scaling and reordering dimensions (z-scores)
+md00mgs <- aperm(apply(md00ygs, 1:2, function(x) rep(x, each = 12)), c(2,3,1)) #each year multiplied by 12 to fit the dataframe
+
+mi31 <- ifelse(((md00ygs[,,1:95]>=1)+(md00ygs[,,2:96]>=1)+(md00ygs[,,3:97]>=1))==3,1,NA)  #3 year, 1sd drought, my standard
+mi31mon <- aperm(apply(mi31, 1:2, function(x) rep(x, each = 12)), c(2,3,1)) #making a monthly version
+mil <- melt(mi31mon) #converting to long form
+
+
+veg_dr <- as.data.frame(cbind(year, month, lat, lon, md00, md00mgs, md0)) #df of all values in long form
+veg_dr[624625:30294264,"drght"]<-mil$value #adding to data set, starting in 1920
+
+```
+
+Exploring the data.  Important: what are the crazy values? 
+```{r EDA}
+summary(veg_dr)
+p0 <- ggplot(veg_dr, aes(x = as.factor(month), y = md0)) + geom_boxplot(aes(group = cut_width(month, .25)))
+ylim1 = boxplot.stats(veg_dr$md0)$stats[c(1, 5)]
+
+# scale y limits based on ylim1
+p1 = p0 + coord_cartesian(ylim = ylim1*1.05)
+
+p2 = ggplot(veg_dr, aes(x = as.factor(year), y = md0)) + geom_boxplot(aes(group = cut_width(year, .25)))
+p2
+```
+
+Next is the vegetation.  LDAS and Landfire have different classifications.  LDAS seems to do a better job of coarse values, but Leroy recommended Landfire.  It covers a smaller area, but maybe the way it was modeled is more robust.  For Landfire, some work will be needed to aggregate types, but that's not too difficult.  Another benefit of LDAS is that its already in percentage of pixel format.  Landfire is the number of hectacres per pixel.  
+```{r Vegetation}
+
+#Landfire Veg
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.lodgepolepine.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.grass_shrubland.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.warm_dry_conifers1.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.warm_dry_conifers2.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.cool_moist_con2.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.cool_moist_con1.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.broad_ever1.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.aspens.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.broad_ever2.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.broad_decid.jdata.rda")
+
+#LDAS Veg
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.water.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.urban.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.bare.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.grassland.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.vegfrac.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.cropland.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.woodland.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.pixels.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.forest.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.shrubland.jdata.rda")
+
+#I'm going to make two dataframes, one for LDAS, and one for Landfire
+
+veg_dr_lf <- veg_dr
+veg_dr_lv <- veg_dr
+
+
+#landfire
+veg_dr_lf$lpp <- lf.lodgepolepine
+veg_dr_lf$gs <- lf.grass_shrubland
+veg_dr_lf$cmc1 <- lf.cool_moist_con1
+veg_dr_lf$cmc2 <- lf.cool_moist_con2
+veg_dr_lf$wdc1 <- lf.warm_dry_conifers1
+veg_dr_lf$wdc2 <- lf.warm_dry_conifers2
+veg_dr_lf$be1 <- lf.broad_ever1
+veg_dr_lf$be2 <- lf.broad_ever2
+veg_dr_lf$bd <- lf.broad_decid
+veg_dr_lf$a <- lf.aspens
+
+
+#LDAS
+veg_dr_lv$bare <- lv.bare
+veg_dr_lv$water <- lv.water
+veg_dr_lv$urban <- lv.urban
+veg_dr_lv$grassland <- lv.grassland
+veg_dr_lv$cropland <- lv.cropland
+veg_dr_lv$woodland <- lv.woodland
+veg_dr_lv$forest <- lv.forest
+veg_dr_lv$shrubland <- lv.shrubland
+
+veg_dr_lv$type <- ifelse(veg_dr_lv$bare > .5, "Bare", ifelse(veg_dr_lv$water > .5, "Water", ifelse(veg_dr_lv$urban > .5, "Urban", ifelse(veg_dr_lv$grassland > .5, "Grassland", ifelse(veg_dr_lv$cropland > .5, "Cropland", ifelse(veg_dr_lv$woodland > .5, "Woodland", ifelse(veg_dr_lv$forest > .5, "Forest", ifelse(veg_dr_lv$shrubland > .5, "Shrubland", "Mix"))))))))
+
+summary(veg_dr_lv)
+p4 <- ggplot(veg_dr_lv, aes(type, drght)) + geom_bar(stat = "identity")
+```
+
+
+```{r Mapping}
+ggplot(subset(veg_dr_lv, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = type)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
+
+
