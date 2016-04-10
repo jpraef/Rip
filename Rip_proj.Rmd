@@ -96,3 +96,8 @@ library(ggplot2)
 rip.points <- fortify(ripshapll)
 
 ```
+
+
+```{r Burn mosiacs}
+BurSev_14 <- readGDAL("~Desktop/RipShap/mtbs_conus_1984_20160401/mtbs_CONUS_dt_1984_20160401.tif")
+file.exists("~/Desktop/RipShap/mtbs_conus_1984_20160401/mtbs_CONUS_dt_1984_20160401.tif")
