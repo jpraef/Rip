@@ -114,8 +114,17 @@ veg_dr_lf$a <- lf.aspens
 #adding cmc, wdc, and be 1 and 2 together
 veg_dr_lf$cmc <- veg_dr_lf$cmc1 + veg_dr_lf$cmc2
 veg_dr_lf$wdc <- veg_dr_lf$wdc1 + veg_dr_lf$wdc2
-veg_dr_lf$be <- veg_dr_lf$be1 + veg_dr_lf$be2
+veg_dr_lf$be <- as.numeric(veg_dr_lf$be1) + as.numeric(veg_dr_lf$be2)
 
+
+summary(veg_dr_lf)
+#vegetation type that covers the largest area
+#veg_temp <- data.frame(Lodgepole = veg_dr_lf[,"lpp"],Grass_Shrubland = veg_dr_lf[,"gs"],Cool_Moist_Conifers = veg_dr_lf[,"cmc"],Warm_Dry_Conifers = veg_dr_lf[,"wdc"],Broadleaf_Evergreen = veg_dr_lf[,"be"],Broadleaf_Deciduous = veg_dr_lf[,"bd"],Aspens = veg_dr_lf[,"a"])
+
+#veg_dr_lf$type2 <- colnames(veg_temp)[max.col(veg_temp, ties.method = "first", na.rm = T)]
+
+#this isn't working.  the be column isn't aggregating, and max.col doesn't know how to deal with na values.  
+#In addition, vic may have been run using ldas values.
 
 
 #LDAS
@@ -147,3 +156,6 @@ p4 <- ggplot(veg_dr_lv, aes(type, drght)) + geom_bar(stat = "identity")
 #LDAS pixels
 ggplot(subset(veg_dr_lv, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = type2)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
 # Looks good, but the colors need work - hard to see
+
+#Landfire Pixels
+ggplot(subset(veg_dr_lf, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = type2)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
