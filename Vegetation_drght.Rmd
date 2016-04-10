@@ -111,6 +111,12 @@ veg_dr_lf$be2 <- lf.broad_ever2
 veg_dr_lf$bd <- lf.broad_decid
 veg_dr_lf$a <- lf.aspens
 
+#adding cmc, wdc, and be 1 and 2 together
+veg_dr_lf$cmc <- veg_dr_lf$cmc1 + veg_dr_lf$cmc2
+veg_dr_lf$wdc <- veg_dr_lf$wdc1 + veg_dr_lf$wdc2
+veg_dr_lf$be <- veg_dr_lf$be1 + veg_dr_lf$be2
+
+
 
 #LDAS
 veg_dr_lv$bare <- lv.bare
@@ -122,7 +128,14 @@ veg_dr_lv$woodland <- lv.woodland
 veg_dr_lv$forest <- lv.forest
 veg_dr_lv$shrubland <- lv.shrubland
 
+#to get the vegetation that covers greater than 50% of each pixel
 veg_dr_lv$type <- ifelse(veg_dr_lv$bare > .5, "Bare", ifelse(veg_dr_lv$water > .5, "Water", ifelse(veg_dr_lv$urban > .5, "Urban", ifelse(veg_dr_lv$grassland > .5, "Grassland", ifelse(veg_dr_lv$cropland > .5, "Cropland", ifelse(veg_dr_lv$woodland > .5, "Woodland", ifelse(veg_dr_lv$forest > .5, "Forest", ifelse(veg_dr_lv$shrubland > .5, "Shrubland", "Mix"))))))))
+
+#or the vegetation that covers the greatest area of each pixel? 
+veg_dr_lv$type2 <- colnames(veg_dr_lv[,9:15])[max.col(veg_dr_lv[,9:15], ties.method = "first")]
+ 
+ 
+
 
 summary(veg_dr_lv)
 p4 <- ggplot(veg_dr_lv, aes(type, drght)) + geom_bar(stat = "identity")
@@ -130,6 +143,7 @@ p4 <- ggplot(veg_dr_lv, aes(type, drght)) + geom_bar(stat = "identity")
 
 
 ```{r Mapping}
-ggplot(subset(veg_dr_lv, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = type)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
 
-
+#LDAS pixels
+ggplot(subset(veg_dr_lv, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = type2)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
+# Looks good, but the colors need work - hard to see
