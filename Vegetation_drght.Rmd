@@ -3,10 +3,6 @@ title: "Veg Types"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 Okay, So all the code crashed yesterday.  Whoo.  So now I'll write it in rmarkdown and save to local git. 
 
 Questions:
@@ -25,11 +21,11 @@ ndpkg <- function(p){
     {install.packages(p, dep = T)}
     require(p,character.only = T)
   }
-sapply(c("ggplot2", "gridExtra","reshape", "mgcv", "dplyr", "maps", "directlabels"), ndpkg)
+sapply(c("ggplot2", "gridExtra","reshape", "mgcv", "dplyr", "maps", "directlabels", "zoo", "ggfortify", "corrplot"), ndpkg)
 mpp <- map_data("state")
 ```
 
-```{r drought code}
+```{r drought code a}
 load("~/Desktop/Project 1/Data/General/md00.jdata.rda")
 load("~/Desktop/Project 1/Data/General/year.jdata.rda")
 load("~/Desktop/Project 1/Data/General/month.jdata.rda")
@@ -54,20 +50,20 @@ veg_dr[624625:30294264,"drght"]<-mil$value #adding to data set, starting in 1920
 ```
 
 Exploring the data.  Important: what are the crazy values? 
-```{r EDA}
+```{r EDA b}
 summary(veg_dr)
-p0 <- ggplot(veg_dr, aes(x = as.factor(month), y = md0)) + geom_boxplot(aes(group = cut_width(month, .25)))
+b1 <- ggplot(veg_dr, aes(x = as.factor(month), y = md0)) + geom_boxplot(aes(group = cut_width(month, .25)))
 ylim1 = boxplot.stats(veg_dr$md0)$stats[c(1, 5)]
 
 # scale y limits based on ylim1
-p1 = p0 + coord_cartesian(ylim = ylim1*1.05)
+b2 = b1 + coord_cartesian(ylim = ylim1*1.05)
 
-p2 = ggplot(veg_dr, aes(x = as.factor(year), y = md0)) + geom_boxplot(aes(group = cut_width(year, .25)))
-p2
+b3 = ggplot(veg_dr, aes(x = as.factor(year), y = md0)) + geom_boxplot(aes(group = cut_width(year, .25)))
+b3
 ```
 
 Next is the vegetation.  LDAS and Landfire have different classifications.  LDAS seems to do a better job of coarse values, but Leroy recommended Landfire.  It covers a smaller area, but maybe the way it was modeled is more robust.  For Landfire, some work will be needed to aggregate types, but that's not too difficult.  Another benefit of LDAS is that its already in percentage of pixel format.  Landfire is the number of hectacres per pixel.  
-```{r Vegetation}
+```{r Vegetation c}
 
 #Landfire Veg
 load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.lodgepolepine.jdata.rda")
@@ -143,19 +139,314 @@ veg_dr_lv$type <- ifelse(veg_dr_lv$bare > .5, "Bare", ifelse(veg_dr_lv$water > .
 #or the vegetation that covers the greatest area of each pixel? 
 veg_dr_lv$type2 <- colnames(veg_dr_lv[,9:15])[max.col(veg_dr_lv[,9:15], ties.method = "first")]
  
- 
+#or, if the area is "bare", by the next most prevalent classification?
+veg_dr_lv$type3 <- ifelse(veg_dr_lv$bare < .5, colnames(veg_dr_lv[,10:15])[max.col(veg_dr_lv[,10:15], ties.method = "first")], colnames(veg_dr_lv[,9:15])[max.col(veg_dr_lv[,9:15], ties.method = "first")])
 
-
+#some EDA
 summary(veg_dr_lv)
-p4 <- ggplot(veg_dr_lv, aes(type, drght)) + geom_bar(stat = "identity")
+c1 <- ggplot(veg_dr_lv, aes(type2, drght)) + geom_bar(stat = "identity")
+
+#Lets try boxplots of drought and not drought by type
+veg_dr_lv$drghtcl <-ifelse(!is.na(veg_dr_lv$drght), "Drought", "Not Drought")
+c2 <- ggplot(veg_dr_lv, aes(x = type2, y = md0)) + geom_boxplot(aes(fill = drghtcl)) #once again, the md0 values are incredibly high
+ylim2 = boxplot.stats(veg_dr_lv$md0)$stats[c(1, 5)]
+c3 = c2 + coord_cartesian(ylim = ylim2*1.05)
+
+#It looks like all areas (with the exception of water, of course) saw lower moisture deficit during not drought than in drought. Grassland and Urban areas had the greatest difference between means, while forest and woodlands had the least.
 ```
 
 
-```{r Mapping}
+```{r Mapping d}
 
 #LDAS pixels
-ggplot(subset(veg_dr_lv, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = type2)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
+#first classification
+d1 <- ggplot(subset(veg_dr_lv, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = type)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
+#second Classification
+d2 <-ggplot(subset(veg_dr_lv, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = type2)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
+#third Classification
+d3 <- ggplot(subset(veg_dr_lv, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = type3)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
 # Looks good, but the colors need work - hard to see
 
+grid.arrange(d1,d2,d3, nrow = 3)
+
+
 #Landfire Pixels
-ggplot(subset(veg_dr_lf, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = type2)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
+#ggplot(subset(veg_dr_lv, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = type)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
+
+```
+
+
+I'm going to focus on the LDAS stuff- its easier to use and covers the same area i've been looking at.  Next step is to figure out how to compare it to droughts. Some ideas: group grid cells by percentages of vegetation (ie, bare over 50%, shrub 25%, cropland >50%, forest + woodland > 50%, etc)
+
+seperate droughts by vegetation class (year 2000 was 15% bare, 20% forest - make 7~8 time graphs).  I like this one.  Lets try it.
+
+```{r timelines e}
+
+#aggregate drght by year, type, lon, lat, 
+
+
+
+veg_dr_yr <- aggregate(drght ~ year + type3 + lon + lat, data = veg_dr_lv, median, na.action = NULL) #now we have breakdown by year
+veg_dr_yr<- aggregate(drght ~ year + type3, data = veg_dr_yr, sum, na.rm = T , na.action = NULL)
+
+
+#fraction of each drought by vegetation type
+veg_dr_yr$ratio <- ifelse(ave(veg_dr_yr$drght, veg_dr_yr$year, FUN = sum) == 0, 0, ave(veg_dr_yr$drght, veg_dr_yr$year, veg_dr_yr$type3, FUN = sum) / ave(veg_dr_yr$drght, veg_dr_yr$year, FUN = sum))
+
+
+e1 <- ggplot(veg_dr_yr, aes(year, ratio)) + geom_area(aes(fill = type3))
+
+
+e2 <- ggplot(subset(veg_dr_lv, year == 1931)) + geom_tile(aes(x = lon, y = lat, fill = drght_scr2)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal()
+
+
+
+
+```
+
+Leroy suggested I seperate droughts by each grid cell, and graph along the x axis the cells historic climate (from md00.mu.jdata), ordered by wettest to driest against the cell drought score (md0 averaged over the window), colored by classification.  Wet, high elevations should show the highest drought score, decreasing to low, drier elevations, and this can be scene by vegetation (high forests, low deserts)
+```{r xy graphs f}
+#add md00.mu to veg_dr_lv
+load("/Users/joe/Desktop/Project 1/Data/General/md.mu.jdata.rda")
+veg_dr_lv$mu <-md.mu
+
+#Lets figure out a "drought score" : maybe the average of md0 for each grid cell, masked by drought? It should be simple to average, then mask.
+nrow(veg_dr_lv)
+#[1] 30294264
+#Subtract two years from the beginning of the time period so that I can see a three year mean md0 for each grid cell:
+182 * 143 * 12 * 2 #long * lat * month * 2 years
+#[1] 624624
+#One year would be:
+182 * 143 *12 *1
+#[1] 312312
+
+for (i in 624625:30294264){
+  veg_dr_lv[i, "drght_scr"] <- sum(veg_dr_lv[i,"md00"], veg_dr_lv[i- 312312,"md0"], veg_dr_lv[i - 624624, "md0"], na.rm = T)
+}
+veg_dr_lv$drght_scr2 <- veg_dr_lv$md00mgs * veg_dr_lv$drght
+veg_dr_lv$mu_scr <- veg_dr_lv$mu * veg_dr_lv$drght
+
+load("/Users/joe/Desktop/Project 1/Data/General/evap.mu.jdata.rda")
+veg_dr_lv$aet <- evap.mu
+
+#subset graphs by drought year: 1931, 1936, 1956, 1961, 2002, 2014
+veg_dr_31 <- subset(veg_dr_lv, year == 1931)
+veg_dr_36 <- subset(veg_dr_lv, year == 1936)
+veg_dr_56 <- subset(veg_dr_lv, year == 1956)
+veg_dr_61 <- subset(veg_dr_lv, year == 1961)
+veg_dr_02 <- subset(veg_dr_lv, year == 2002)
+veg_dr_14 <- subset(veg_dr_lv, year == 2014)
+
+#reordering by size
+reorder_size <- function(x) {
+  factor(x, levels = names(sort(table(x))))
+}
+f1 <-ggplot(veg_dr_31, aes(x = reorder_size(mu_scr), y = drght_scr2, fill = type3)) + geom_bar(stat= "identity")
+f2<-ggplot(veg_dr_31, aes(x = reorder_size(mu), y = aet)) + geom_point(aes(color = type3, size = drght_scr2, order = reorder_size(drght_scr2)), alpha = 1/10) + guides(colour = guide_legend(override.aes = list(alpha = 1)))
+
+f3<-ggplot(veg_dr_14, aes(x = reorder_size(mu_scr), y = aet)) + geom_point(aes(color = type3, size = drght_scr2, order = rev(reorder_size(drght_scr2))), alpha = 1/10) + guides(colour = guide_legend(override.aes = list(alpha = 1))) + scale_size(range = c(0,1))
+f4 <-ggplot(veg_dr_14, aes(x = reorder_size(mu_scr), y = drght_scr2, fill = type3)) + geom_bar(stat= "identity") 
+
+
+```
+
+
+Dan is concerned about unknown drought characteristics between regions, so lets use the ecotones
+```{r  dan g}
+veg_dr_lv$Nll_fx <- ecozone.fxn_Null
+veg_dr_lv$MD1_fx <- ecozone.fxn_MontaneDry1
+veg_dr_lv$MM6_fx <- ecozone.fxn_MontaneMesic6
+veg_dr_lv$FH4_fx <- ecozone.fxn_Foothill4
+veg_dr_lv$SA2_fx <- ecozone.fxn_SubalpineAlpine2
+veg_dr_lv$SbP5_fx <- ecozone.fxn_SagebrushPJ5
+veg_dr_lv$UM3_fx <- ecozone.fxn_UpperMontane3
+
+veg_dr_lv$ecotype <- ifelse(veg_dr_lv$Nll_fx < .5, colnames(veg_dr_lv[,27:32])[max.col(veg_dr_lv[,27:32], ties.method = "first")], colnames(veg_dr_lv[,26:32])[max.col(veg_dr_lv[,26:32], ties.method = "first")])
+
+g1 <- ggplot(subset(veg_dr_lv, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = ecotype)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
+
+
+veg_dr_lv$Nll_fx <- NULL
+veg_dr_lv$MD1_fx <- NULL
+veg_dr_lv$MM6_fx <- NULL
+veg_dr_lv$FH4_fx <- NULL
+veg_dr_lv$SA2_fx <- NULL
+veg_dr_lv$SbP5_fx <- NULL
+veg_dr_lv$UM3_fx <- NULL
+```
+
+... The ecotones only show the sierras.  Back to vegetation, and justification of its use.
+
+Next, i'm going to aggregate veg-type, then look at the time series of droughts in each type.  I did this sunday, but since the code crashed...well...  Actually, its up above.  
+autocorrelation too
+
+```{r standardizing by month 2 h}
+test <- subset(veg_dr_lv, year >= 2012 & year <= 2014)
+
+
+#monthly moisture deficit, standardized by lon, lat, mon, year
+md0m <- aggregate(md0 ~ lon + lat + month, test, mean, na.rm = T, na.action = NULL)
+md0s <- aggregate(md0 ~ lon + lat + month, test, sd, na.rm = T, na.action = NULL)
+
+test$md0s <- rep(md0s$md0, 3)
+test$md0m <- rep(md0m$md0, 3)
+test$md0stan_an <- (test$md0 - test$md0m) / test$md0s
+#Test appears to work
+#lets add the monthly standardized md0 to the frame
+
+md0m <- aggregate(md0 ~ lon + lat + month, veg_dr_lv, mean, na.rm = T, na.action = NULL)
+md0s <- aggregate(md0 ~ lon + lat + month, veg_dr_lv, sd, na.rm = T, na.action = NULL)
+
+veg_dr_lv$md0s <- rep(md0s$md0, 97)
+veg_dr_lv$md0m <- rep(md0m$md0, 97)
+veg_dr_lv$md0stan_an <- (veg_dr_lv$md0 - veg_dr_lv$md0m) / veg_dr_lv$md0s
+
+#what's it look like, compared to plot a1
+
+h1 <- ggplot(veg_dr_lv, aes(x = as.factor(month), y = md0stan_an)) + geom_boxplot(aes(group = cut_width(month, .25)))
+ylim1 = boxplot.stats(veg_dr_lv$md0stan_an)$stats[c(1, 5)]
+
+# scale y limits based on ylim1
+h2 = h1 + coord_cartesian(ylim = ylim1*1.05)
+
+#So it looks like its been normalized by month: early and late months are low, while summer months are higher, but not too much variation in the quartiles.  It'll be interesting to see it when its masked by droughts
+
+veg_dr_lv$md0_sa_msk <- veg_dr_lv$md0stan_an * veg_dr_lv$drght
+
+h3 <- ggplot(veg_dr_lv, aes(x = as.factor(month), y = md0_sa_msk)) + geom_boxplot(aes(group = cut_width(month, .25)))
+ylim1 = boxplot.stats(veg_dr_lv$md0_sa_msk)$stats[c(1, 5)]
+
+# scale y limits based on ylim1
+h4 = h3 + coord_cartesian(ylim = ylim1*1.05)
+
+#ooooh.  Summer months definitely pull the cumulative md up.  But pretty much every month, with the exception of december, has a mean value greater than the average.  This works.  
+
+#Prec and tavg
+load("/Volumes/MANWE2/UW_incoming/data/all_west/output/jdata_1915-2014/tavg.jdata.rda")
+load("/Volumes/MANWE2/UW_incoming/data/all_west/output/jdata_1915-2014/prec.jdata.rda")
+veg_dr_lv$prec <- melt(prec)$value
+veg_dr_lv$tavg <- melt(tavg)$value
+#prec
+
+precm <- aggregate(prec ~ lon + lat + month, veg_dr_lv, mean, na.rm = T, na.action = NULL)
+precs <- aggregate(prec ~ lon + lat + month, veg_dr_lv, sd, na.rm = T, na.action = NULL)
+
+veg_dr_lv$precs <- rep(precs$prec, 97)
+veg_dr_lv$precm <- rep(precm$prec, 97)
+veg_dr_lv$precstan_an <- (veg_dr_lv$prec - veg_dr_lv$precm) / veg_dr_lv$precs
+
+#prec
+
+tavgm <- aggregate(tavg ~ lon + lat + month, veg_dr_lv, mean, na.rm = T, na.action = NULL)
+tavgs <- aggregate(tavg ~ lon + lat + month, veg_dr_lv, sd, na.rm = T, na.action = NULL)
+
+veg_dr_lv$tavgs <- rep(tavgs$tavg, 97)
+veg_dr_lv$tavgm <- rep(tavgm$tavg, 97)
+veg_dr_lv$tavgstan_an <- (veg_dr_lv$tavg - veg_dr_lv$tavgm) / veg_dr_lv$tavgs
+
+```
+
+
+Lets look to see how prec, tavg, and md0 standarized anomalies correlate in each class
+```{r corrplotting i}
+br_df<- subset(veg_dr_lv, type3 =="bare")
+wt_df <-subset(veg_dr_lv, type3 =="water")
+wl_df <-subset(veg_dr_lv, type3 =="woodland")
+cl_df <-subset(veg_dr_lv, type3 =="cropland")
+gl_df <-subset(veg_dr_lv, type3 =="grassland")
+f_df <-subset(veg_dr_lv, type3 =="forest")
+ur_df <-subset(veg_dr_lv, type3 =="urban")
+
+i1 <- cor(data.frame("MDOs" = br_df$md0stan_an, "TAVGs" = br_df$tavgstan_an, "PRECs" = br_df$precstan_an, "MDO" = br_df$md0, "PREC" = br_df$prec, "TAVG" = br_df$tavg), use = "complete.obs")
+res1 <- cor.mtest(i1, .95)
+corrplot(i1, p.mat = res1[[1]], sig.level=0.2)
+
+i2 <- cor(data.frame("MDOs" = wt_df$md0stan_an, "TAVGs" = wt_df$tavgstan_an, "PRECs" = wt_df$precstan_an, "MDO" = wt_df$md0, "PREC" = wt_df$prec, "TAVG" = wt_df$tavg), use = "complete.obs")
+res1 <- cor.mtest(i2, .95)
+corrplot(i2, p.mat = res1[[1]], sig.level=0.2)
+
+i3 <- cor(data.frame("MDOs" = wl_df$md0stan_an, "TAVGs" = wl_df$tavgstan_an, "PRECs" = wl_df$precstan_an, "MDO" = wl_df$md0, "PREC" = wl_df$prec, "TAVG" = wl_df$tavg), use = "complete.obs")
+res1 <- cor.mtest(i3, .95)
+corrplot(i3, p.mat = res1[[1]], sig.level=0.2)
+
+i4 <- cor(data.frame("MDOs" = cl_df$md0stan_an, "TAVGs" = cl_df$tavgstan_an, "PRECs" = cl_df$precstan_an, "MDO" = cl_df$md0, "PREC" = cl_df$prec, "TAVG" = cl_df$tavg), use = "complete.obs")
+res1 <- cor.mtest(i4, .95)
+corrplot(i4, p.mat = res1[[1]], sig.level=0.2)
+
+i5 <- cor(data.frame("MDOs" = gl_df$md0stan_an, "TAVGs" = gl_df$tavgstan_an, "PRECs" = gl_df$precstan_an, "MDO" = gl_df$md0, "PREC" = gl_df$prec, "TAVG" = gl_df$tavg), use = "complete.obs")
+res1 <- cor.mtest(i5, .95)
+corrplot(i5, p.mat = res1[[1]], sig.level=0.2)
+
+i6 <- cor(data.frame("MDOs" = f_df$md0stan_an, "TAVGs" = f_df$tavgstan_an, "PRECs" = f_df$precstan_an, "MDO" = f_df$md0, "PREC" = f_df$prec, "TAVG" = f_df$tavg), use = "complete.obs")
+res1 <- cor.mtest(i6, .95)
+corrplot(i6, p.mat = res1[[1]], sig.level=0.2)
+
+i7 <- cor(data.frame("MDOs" = ur_df$md0stan_an, "TAVGs" = ur_df$tavgstan_an, "PRECs" = ur_df$precstan_an, "MDO" = ur_df$md0, "PREC" = ur_df$prec, "TAVG" = ur_df$tavg), use = "complete.obs")
+res1 <- cor.mtest(i7, .95)
+corrplot(i7, p.mat = res1[[1]], sig.level=0.2)
+
+
+#function to x out insignificant correlations
+cor.mtest <- function(mat, conf.level = 0.95){
+  mat <- as.matrix(mat)
+    n <- ncol(mat)
+    p.mat <- lowCI.mat <- uppCI.mat <- matrix(NA, n, n)
+    diag(p.mat) <- 0
+    diag(lowCI.mat) <- diag(uppCI.mat) <- 1
+    for(i in 1:(n-1)){
+        for(j in (i+1):n){
+            tmp <- cor.test(mat[,i], mat[,j], conf.level = conf.level)
+            p.mat[i,j] <- p.mat[j,i] <- tmp$p.value
+            lowCI.mat[i,j] <- lowCI.mat[j,i] <- tmp$conf.int[1]
+            uppCI.mat[i,j] <- uppCI.mat[j,i] <- tmp$conf.int[2]
+        }
+    }
+    return(list(p.mat, lowCI.mat, uppCI.mat))
+}
+res1 <- cor.mtest(i7, .95)
+corrplot(i7, p.mat = res1[[1]], sig.level=0.2)
+```
+
+```{r timeseries 2 j}
+
+#subset by type
+
+#look at autocorrelation for each time series... monthly totals? mean of pixels by month by type in drought cores? 
+#using the median because of outliers
+ts_med <- aggregate(md0_sa_msk ~ month + year + type3, veg_dr_lv, median, na.rm = T, na.action = NULL)
+ts_med$dt <- as.yearmon(paste(ts_med$year, ts_med$month, sep = "_"), "%Y_%m")
+#This might not work, what about md0 not masked by drought cores?  looking for md anomolies across space and time
+
+ts_med2 <- aggregate(md0stan_an ~ month + year + type3, veg_dr_lv, median, na.rm = T, na.action = NULL)
+ts_med2$dt <- as.yearmon(paste(ts_med2$year, ts_med2$month, sep = "_"), "%Y_%m")
+ts_med2$ts_md0 <- ts(ts_med2$md0stan_an, start = 1918, frequency = 12)
+plot(ts_med2$dt,ts_med2$ts_md0, t = 'l')
+
+#acf plots
+br_ts<- acf(subset(ts_med2, type3 =="bare")$ts_md0)
+wt_ts <-acf(subset(ts_med2, type3 =="water")$ts_md0)
+wl_ts <-acf(subset(ts_med2, type3 =="woodland")$ts_md0)
+cl_ts <-acf(subset(ts_med2, type3 =="cropland")$ts_md0)
+gl_ts <-acf(subset(ts_med2, type3 =="grassland")$ts_md0)
+f_ts <-acf(subset(ts_med2, type3 =="forest")$ts_md0)
+ur_ts <-acf(subset(ts_med2, type3 =="urban")$ts_md0)
+#ACF plots indicate that there is is a small seasonal effect, close to not being significant, in woodland, cropland, and forest, but for the most part, autocorrelations don't have an affect after ~5 months
+
+
+#time series
+ts_df <- rbind(data.frame("lag" = br_ts$lag, "acf" = br_ts$acf, "class" = "bare"),
+               data.frame("lag" = wt_ts$lag, "acf" = wt_ts$acf, "class" = "water"),
+               data.frame("lag" = wl_ts$lag, "acf" = wl_ts$acf, "class" = "woodland"),
+               data.frame("lag" = cl_ts$lag, "acf" = cl_ts$acf, "class" = "cropland"),
+               data.frame("lag" = gl_ts$lag, "acf" = gl_ts$acf, "class" = "grassland"),
+               data.frame("lag" = f_ts$lag, "acf" = f_ts$acf, "class" = "forest"),
+               data.frame("lag" = ur_ts$lag, "acf" = ur_ts$acf, "class" = "urban"))
+#I think this
+kruskal.test(acf~class, ts_df)
+
+```
+
+
+```{r saving}
+save(veg_dr_lv, file = "~/Desktop/Spring 2016/ES 207/Coarse Vegetation/LV.rda")
+save(veg_dr, file = "~/Desktop/Spring 2016/ES 207/Coarse Vegetation/veg_dr.rda")
