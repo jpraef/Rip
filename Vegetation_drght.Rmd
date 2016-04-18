@@ -242,7 +242,7 @@ reorder_size <- function(x) {
   factor(x, levels = names(sort(table(x))))
 }
 f1 <-ggplot(veg_dr_31, aes(x = reorder_size(mu_scr), y = drght_scr2, fill = type3)) + geom_bar(stat= "identity")
-f2<-ggplot(veg_dr_31, aes(x = reorder_size(mu), y = aet)) + geom_point(aes(color = type3, size = drght_scr2, order = reorder_size(drght_scr2)), alpha = 1/10) + guides(colour = guide_legend(override.aes = list(alpha = 1)))
+f2<-ggplot(veg_dr_31, aes(x = reorder_size(mu), y = aet)) + geom_point(aes(color = type3, size = drght_scr2, order = reorder_size(drght_scr2)), alpha = 1/10) + guides(colour = guide_legend(override.aes = list(alpha = 1))) + labs(title = "2014 Drought Standardized Moisture Deficit", x = "Moisture deficit (mm), averaged for 1961 - 1990", y = "Actual Evapotranspiration") + scale_x_continuous(breaks = seq(0, , 10))
 
 f3<-ggplot(veg_dr_14, aes(x = reorder_size(mu_scr), y = aet)) + geom_point(aes(color = type3, size = drght_scr2, order = rev(reorder_size(drght_scr2))), alpha = 1/10) + guides(colour = guide_legend(override.aes = list(alpha = 1))) + scale_size(range = c(0,1))
 f4 <-ggplot(veg_dr_14, aes(x = reorder_size(mu_scr), y = drght_scr2, fill = type3)) + geom_bar(stat= "identity") 
