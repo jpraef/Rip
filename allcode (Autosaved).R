@@ -15,6 +15,18 @@ load("~/Desktop/Project 1/Data/General/month.jdata.rda")
 load("~/Desktop/Project 1/Data/General/prec.jdata.rda")
 load("~/Desktop/Project 1/Data/General/tavg.jdata.rda")
 
+#LDAS Veg
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.water.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.urban.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.bare.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.grassland.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.vegfrac.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.cropland.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.woodland.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.pixels.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.forest.jdata.rda")
+load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.shrubland.jdata.rda")
+
 #Create a gridded annual md0 index
 md00y <- md00[month==7] #Only need one month of the annual md0
 md00yg <- by(md00y,list(lon[month==7],lat[month==7],year[month==7]),median)
@@ -302,6 +314,11 @@ mi3156 <- melt(aperm(apply(mi31[,,"1956"], 1:2, function(x) rep(x, each = 1164))
 mi3136 <- melt(aperm(apply(mi31[,,"1936"], 1:2, function(x) rep(x, each = 1164)), c(2,3,1)))
 mi3131 <- melt(aperm(apply(mi31[,,"1931"], 1:2, function(x) rep(x, each = 1164)), c(2,3,1)))
 
+#note: veg_dr_lv works pretty well, so in the interest of keeping this code together (for now) i'm going to renames veg_dr_lv as all_var
+
+
+all_var <- veg_dr_lv
+
 #add to all_var before masking
 all_var$mi3114 <- mi3114$value
 all_var$mi3102 <- mi3102$value
@@ -528,25 +545,25 @@ ln_graph <- ggplot(men_var, aes(x = rel, y = value, color = letter)) + geom_line
 
 
 
-points(x = precs, y = tavgs, data = dmmbb)
+#points(x = precs, y = tavgs, data = dmmbb)
 
 #to do: scale md0, tavg, and prec
-md000 <- aggregate(md0 ~ lat + lon + water_year, data = all_var, FUN = sum)
+md000 <- aggregate(md0 ~ lat + lon + water_year, data = all_var, FUN = sum, na.rm = T, na.action = NULL)
 mdf000 <- filter(md000, water_year >= 1919, water_year <= 2014)
 mdf000$m <- scale(mdf000$md0)
 
 #Does the aggregated md0 match md00?
-md0000 <- aggregate(md00 ~ lat + lon + year, data = all_var, FUN = mean)
+md0000 <- aggregate(md00 ~ lat + lon + year, data = all_var, FUN = mean, na.rm = T, na.action = NULL)
 md000f <- aggregate(md0 ~ water_year, data = mdf000, FUN = mean)
 plot(md000f$water_year, md000f$md0)
 lines(md0000$year, md0000$md00)
 
 #back to scaling things
-prc0 <- aggregate(prec ~ lat + lon + water_year, data = all_var, FUN = sum)
+prc0 <- aggregate(prec ~ lat + lon + water_year, data = all_var, FUN = sum, na.rm = T,na.action = NULL)
 prcf0 <- filter(prc0, water_year >= 1919, water_year <= 2014)
 prcf0$p <- scale(prcf0$prec)
 
-tavg0 <- aggregate(tavg ~ lat + lon + water_year, data = all_var, FUN = mean)
+tavg0 <- aggregate(tavg ~ lat + lon + water_year, data = all_var, FUN = mean, na.rm = T,na.action = NULL)
 tavgf0 <- filter(tavg0, water_year >= 1919, water_year <= 2014)
 tavgf0$tt <- scale(tavgf0$tavg)
 
@@ -558,7 +575,7 @@ dn <- data.frame(md0 = mdf000$md0,prec = prcf0$prec,tavg = tavgf0$tavg, md0s = m
 rasted <- ggplot(data = dn, aes(x = precs, y = tavgs)) + geom_contour(aes(z = md0s))
 
 
-dn_bam <- bam(md0s ~ s(precs, tavgs), data = dn)
+dn_bam <- bam(md0stan_an ~ s(precstan_an, tavgstan_an), data = veg_dr_lv)
 vis.gam(dn_bam, view = c("prec","tavg"), plot.type = "contour", too.far = .1)
 
 newdata <- data.frame(precs = rep(seq(-1.04724, 14.92760, length.out = 200), 200), tavgs = rep(seq(-3.5408, 3.4682, length.out = 2000), each = 200))

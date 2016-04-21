@@ -1,6 +1,6 @@
 ---
 title: "Veg Types"
-output: html_document
+output: word_document
 ---
 
 Okay, So all the code crashed yesterday.  Whoo.  So now I'll write it in rmarkdown and save to local git. 
@@ -9,7 +9,6 @@ Questions:
 The drought dataset, of 3 years of standarized moisture deficit greater than 1 standard deviation, shows where drought severity is high, especially when the yearly moisture deficit values are superimposed on the cores.  However, as Dan Cayan pointed out, regions can have very different ecological complexities that may influence our ability to compare droughts across regions.  Our objective now is to find a way to justify comparisions across regions.  
 One way is to look at the vegetation classifications in the drought cores using either the LDAS or the Landfire classifications.  If there is a mix of vegeteation classes in each year's core, then it may not be possible to compare across regions easily.  However, if droughts seem to dominate in one or two vegetation classes, then I can say something about droughts occuring in x class duing y years and z class during w years. Or something.  
 The LDAS and Landfire vegetation maps are static, built off of data from that last 20 years or so.  I'll have to find support for using this to look at droughts in early century vegetation, but Leroy mentioned that it shouldn't be a concern.  Vegetation was fairly static in the last 100 years, with the most change occuring in the last 20 years or so.
-Still, I'm not entirely happen with this.  Its okay for an initial exploration, but I think we're moving to a point that this simplistic explanation is not providing anything new.  Maybe complementary.  Maybe I have to wrap my mind around how to tell this story, and i'm getting bogged down in telling someone else's story, as it were.  
 
 Code:  
 To start, I need the drought data set.  Lets get the final code version of all_var in here.
@@ -32,7 +31,10 @@ load("~/Desktop/Project 1/Data/General/month.jdata.rda")
 load("~/Desktop/Project 1/Data/General/lat.jdata.rda")
 load("~/Desktop/Project 1/Data/General/lon.jdata.rda")
 load("~/Desktop/Project 1/Data/General/md0.jdata.rda")
-
+load("~/Desktop/Project 1/Data/General/tavg.jdata.rda")
+load("~/Desktop/Project 1/Data/General/prec.jdata.rda")
+load("~/Desktop/Project 1/Data/General/evap.mu.jdata.rda")
+load("~/Desktop/Project 1/Data/General/md.mu.jdata.rda")
 #Create a gridded annual md0 index
 md00y <- md00[month==7] #Only need one month of the annual md0
 md00yg <- by(md00y,list(lon[month==7],lat[month==7],year[month==7]),median)
@@ -62,20 +64,9 @@ b3 = ggplot(veg_dr, aes(x = as.factor(year), y = md0)) + geom_boxplot(aes(group 
 b3
 ```
 
-Next is the vegetation.  LDAS and Landfire have different classifications.  LDAS seems to do a better job of coarse values, but Leroy recommended Landfire.  It covers a smaller area, but maybe the way it was modeled is more robust.  For Landfire, some work will be needed to aggregate types, but that's not too difficult.  Another benefit of LDAS is that its already in percentage of pixel format.  Landfire is the number of hectacres per pixel.  
+Next is the vegetation.  LDAS and Landfire have different classifications.  LDAS seems to do a better job of coarse values, but Leroy recommended Landfire.  It covers a smaller area, but maybe the way it was modeled is more robust.  For Landfire, some work will be needed to aggregate types, but that's not too difficult.  Another benefit of LDAS is that its already in percentage of pixel format.  
 ```{r Vegetation c}
 
-#Landfire Veg
-load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.lodgepolepine.jdata.rda")
-load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.grass_shrubland.jdata.rda")
-load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.warm_dry_conifers1.jdata.rda")
-load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.warm_dry_conifers2.jdata.rda")
-load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.cool_moist_con2.jdata.rda")
-load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.cool_moist_con1.jdata.rda")
-load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.broad_ever1.jdata.rda")
-load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.aspens.jdata.rda")
-load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.broad_ever2.jdata.rda")
-load("/Users/joe/Desktop/Project 1/Data/General/Veg/lf.broad_decid.jdata.rda")
 
 #LDAS Veg
 load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.water.jdata.rda")
@@ -89,39 +80,9 @@ load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.pixels.jdata.rda")
 load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.forest.jdata.rda")
 load("/Users/joe/Desktop/Project 1/Data/General/Veg/lv.shrubland.jdata.rda")
 
-#I'm going to make two dataframes, one for LDAS, and one for Landfire
 
-veg_dr_lf <- veg_dr
+
 veg_dr_lv <- veg_dr
-
-
-#landfire
-veg_dr_lf$lpp <- lf.lodgepolepine
-veg_dr_lf$gs <- lf.grass_shrubland
-veg_dr_lf$cmc1 <- lf.cool_moist_con1
-veg_dr_lf$cmc2 <- lf.cool_moist_con2
-veg_dr_lf$wdc1 <- lf.warm_dry_conifers1
-veg_dr_lf$wdc2 <- lf.warm_dry_conifers2
-veg_dr_lf$be1 <- lf.broad_ever1
-veg_dr_lf$be2 <- lf.broad_ever2
-veg_dr_lf$bd <- lf.broad_decid
-veg_dr_lf$a <- lf.aspens
-
-#adding cmc, wdc, and be 1 and 2 together
-veg_dr_lf$cmc <- veg_dr_lf$cmc1 + veg_dr_lf$cmc2
-veg_dr_lf$wdc <- veg_dr_lf$wdc1 + veg_dr_lf$wdc2
-veg_dr_lf$be <- as.numeric(veg_dr_lf$be1) + as.numeric(veg_dr_lf$be2)
-
-
-summary(veg_dr_lf)
-#vegetation type that covers the largest area
-#veg_temp <- data.frame(Lodgepole = veg_dr_lf[,"lpp"],Grass_Shrubland = veg_dr_lf[,"gs"],Cool_Moist_Conifers = veg_dr_lf[,"cmc"],Warm_Dry_Conifers = veg_dr_lf[,"wdc"],Broadleaf_Evergreen = veg_dr_lf[,"be"],Broadleaf_Deciduous = veg_dr_lf[,"bd"],Aspens = veg_dr_lf[,"a"])
-
-#veg_dr_lf$type2 <- colnames(veg_temp)[max.col(veg_temp, ties.method = "first", na.rm = T)]
-
-#this isn't working.  the be column isn't aggregating, and max.col doesn't know how to deal with na values.  
-#In addition, vic may have been run using ldas values.
-
 
 #LDAS
 veg_dr_lv$bare <- lv.bare
@@ -133,12 +94,6 @@ veg_dr_lv$woodland <- lv.woodland
 veg_dr_lv$forest <- lv.forest
 veg_dr_lv$shrubland <- lv.shrubland
 
-#to get the vegetation that covers greater than 50% of each pixel
-veg_dr_lv$type <- ifelse(veg_dr_lv$bare > .5, "Bare", ifelse(veg_dr_lv$water > .5, "Water", ifelse(veg_dr_lv$urban > .5, "Urban", ifelse(veg_dr_lv$grassland > .5, "Grassland", ifelse(veg_dr_lv$cropland > .5, "Cropland", ifelse(veg_dr_lv$woodland > .5, "Woodland", ifelse(veg_dr_lv$forest > .5, "Forest", ifelse(veg_dr_lv$shrubland > .5, "Shrubland", "Mix"))))))))
-
-#or the vegetation that covers the greatest area of each pixel? 
-veg_dr_lv$type2 <- colnames(veg_dr_lv[,9:15])[max.col(veg_dr_lv[,9:15], ties.method = "first")]
- 
 #or, if the area is "bare", by the next most prevalent classification?
 veg_dr_lv$type3 <- ifelse(veg_dr_lv$bare < .5, colnames(veg_dr_lv[,10:15])[max.col(veg_dr_lv[,10:15], ties.method = "first")], colnames(veg_dr_lv[,9:15])[max.col(veg_dr_lv[,9:15], ties.method = "first")])
 
@@ -169,9 +124,6 @@ d3 <- ggplot(subset(veg_dr_lv, year == 2014)) + geom_tile(aes(x = lon, y = lat, 
 
 grid.arrange(d1,d2,d3, nrow = 3)
 
-
-#Landfire Pixels
-#ggplot(subset(veg_dr_lv, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = type)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
 
 ```
 
@@ -207,7 +159,7 @@ e2 <- ggplot(subset(veg_dr_lv, year == 1931)) + geom_tile(aes(x = lon, y = lat, 
 Leroy suggested I seperate droughts by each grid cell, and graph along the x axis the cells historic climate (from md00.mu.jdata), ordered by wettest to driest against the cell drought score (md0 averaged over the window), colored by classification.  Wet, high elevations should show the highest drought score, decreasing to low, drier elevations, and this can be scene by vegetation (high forests, low deserts)
 ```{r xy graphs f}
 #add md00.mu to veg_dr_lv
-load("/Users/joe/Desktop/Project 1/Data/General/md.mu.jdata.rda")
+
 veg_dr_lv$mu <-md.mu
 
 #Lets figure out a "drought score" : maybe the average of md0 for each grid cell, masked by drought? It should be simple to average, then mask.
@@ -220,13 +172,17 @@ nrow(veg_dr_lv)
 182 * 143 *12 *1
 #[1] 312312
 
-for (i in 624625:30294264){
-  veg_dr_lv[i, "drght_scr"] <- sum(veg_dr_lv[i,"md00"], veg_dr_lv[i- 312312,"md0"], veg_dr_lv[i - 624624, "md0"], na.rm = T)
-}
+
+#this drought screen doesn't quite work yet, at least, it takes a long time to run
+#for (i in 624625:30294264){
+#  veg_dr_lv[i, "drght_scr"] <- sum(veg_dr_lv[i,"md0"], veg_dr_lv[i- 312312,"md0"], veg_dr_lv[i - 624624, "md0"], na.rm = T)
+#}
+
+#This will show just the last year, but that's okay
 veg_dr_lv$drght_scr2 <- veg_dr_lv$md00mgs * veg_dr_lv$drght
 veg_dr_lv$mu_scr <- veg_dr_lv$mu * veg_dr_lv$drght
 
-load("/Users/joe/Desktop/Project 1/Data/General/evap.mu.jdata.rda")
+
 veg_dr_lv$aet <- evap.mu
 
 #subset graphs by drought year: 1931, 1936, 1956, 1961, 2002, 2014
@@ -256,31 +212,6 @@ f4 <-ggplot(veg_dr_14, aes(x = reorder_size(mu_scr), y = drght_scr2, fill = type
 ```
 
 
-Dan is concerned about unknown drought characteristics between regions, so lets use the ecotones
-```{r  dan g}
-veg_dr_lv$Nll_fx <- ecozone.fxn_Null
-veg_dr_lv$MD1_fx <- ecozone.fxn_MontaneDry1
-veg_dr_lv$MM6_fx <- ecozone.fxn_MontaneMesic6
-veg_dr_lv$FH4_fx <- ecozone.fxn_Foothill4
-veg_dr_lv$SA2_fx <- ecozone.fxn_SubalpineAlpine2
-veg_dr_lv$SbP5_fx <- ecozone.fxn_SagebrushPJ5
-veg_dr_lv$UM3_fx <- ecozone.fxn_UpperMontane3
-
-veg_dr_lv$ecotype <- ifelse(veg_dr_lv$Nll_fx < .5, colnames(veg_dr_lv[,27:32])[max.col(veg_dr_lv[,27:32], ties.method = "first")], colnames(veg_dr_lv[,26:32])[max.col(veg_dr_lv[,26:32], ties.method = "first")])
-
-g1 <- ggplot(subset(veg_dr_lv, year == 2014)) + geom_tile(aes(x = lon, y = lat, fill = ecotype)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + theme_minimal() 
-
-
-veg_dr_lv$Nll_fx <- NULL
-veg_dr_lv$MD1_fx <- NULL
-veg_dr_lv$MM6_fx <- NULL
-veg_dr_lv$FH4_fx <- NULL
-veg_dr_lv$SA2_fx <- NULL
-veg_dr_lv$SbP5_fx <- NULL
-veg_dr_lv$UM3_fx <- NULL
-```
-
-... The ecotones only show the sierras.  Back to vegetation, and justification of its use.
 
 Next, i'm going to aggregate veg-type, then look at the time series of droughts in each type.  I did this sunday, but since the code crashed...well...  Actually, its up above.  
 autocorrelation too
@@ -327,8 +258,7 @@ h4 = h3 + coord_cartesian(ylim = ylim1*1.05)
 #ooooh.  Summer months definitely pull the cumulative md up.  But pretty much every month, with the exception of december, has a mean value greater than the average.  This works.  
 
 #Prec and tavg
-load("/Volumes/MANWE2/UW_incoming/data/all_west/output/jdata_1915-2014/tavg.jdata.rda")
-load("/Volumes/MANWE2/UW_incoming/data/all_west/output/jdata_1915-2014/prec.jdata.rda")
+
 veg_dr_lv$prec <- melt(prec)$value
 veg_dr_lv$tavg <- melt(tavg)$value
 #prec
@@ -450,6 +380,628 @@ ts_df <- rbind(data.frame("lag" = br_ts$lag, "acf" = br_ts$acf, "class" = "bare"
 kruskal.test(acf~class, ts_df)
 
 ```
+
+
+```{r All other code}
+all_var <- veg_dr_lv
+#add a water year variable
+all_var$water_year <- NA
+all_var[1:234234, "water_year"] <- 1918
+all_var[234235: 30216186, "water_year"] <- rep(1919:2014, each = 312312)
+all_var[30216186:30294264, "water_year"] <- 2015
+
+
+#2 year drought, z-score thresholds == 0, 1, 2 
+
+mi20 <- ifelse(((md00ygs[,,1:96]>=0)+(md00ygs[,,2:97]>=0))==2,1,NA)
+mi21 <- ifelse(((md00ygs[,,1:96]>=1)+(md00ygs[,,2:97]>=1))==2,1,NA)
+mi22 <- ifelse(((md00ygs[,,1:96]>=2)+(md00ygs[,,2:97]>=2))==2,1,NA)
+         
+#3 year drought, z-score threshold == 0, 1, 2
+mi30 <- ifelse(((md00ygs[,,1:95]>=0)+(md00ygs[,,2:96]>=0)+(md00ygs[,,3:97]>=0))==3,1,NA)  
+mi31 <- ifelse(((md00ygs[,,1:95]>=1)+(md00ygs[,,2:96]>=1)+(md00ygs[,,3:97]>=1))==3,1,NA)  
+mi32 <- ifelse(((md00ygs[,,1:95]>=2)+(md00ygs[,,2:96]>=2)+(md00ygs[,,3:97]>=2))==3,1,NA)  
+         
+#5 year drought, z-score threshold == 0, 1, 2
+mi50 <- ifelse(((md00ygs[,,1:93]>=0)+(md00ygs[,,2:94]>=0)+(md00ygs[,,3:95]>=0)+(md00ygs[,,4:96]>=0)+(md00ygs[,,5:97]>=0))==5,1,NA)
+mi51 <- ifelse(((md00ygs[,,1:93]>=1)+(md00ygs[,,2:94]>=1)+(md00ygs[,,3:95]>=1)+(md00ygs[,,4:96]>=1)+(md00ygs[,,5:97]>=1))==5,1,NA)         
+mi52 <- ifelse(((md00ygs[,,1:93]>=2)+(md00ygs[,,2:94]>=2)+(md00ygs[,,3:95]>=2)+(md00ygs[,,4:96]>=2)+(md00ygs[,,5:97]>=2))==5,1,NA)         
+         
+
+#compare criteria visually
+rnk_per <- data.frame(Year = 1918:2014, percent_20 = NA, percent_21 = NA, percent_22 = NA, percent_30 = NA, percent_31 = NA, percent_32 = NA, percent_50 = NA, percent_51 = NA, percent_52 = NA)
+
+#total core cells/ total land cells
+for (i in 1:96){
+	rnk_per[i+1,2]<- 100 * (sum(!is.na(mi20[ , , i])) / sum(!is.na(md00ygs[ , , i])))
+	rnk_per[i+1,3]<- 100 * (sum(!is.na(ifelse(mi21[ , ,i] >= 1, 1, NA))) / sum(!is.na(md00ygs[ , , i])))
+	rnk_per[i+1,4]<- 100 * (sum(!is.na(ifelse(mi22[ , ,i] >= 2, 1, NA))) / sum(!is.na(md00ygs[ , , i])))
+}
+
+for (i in 1:95){
+	rnk_per[i+2,5]<- 100 * (sum(!is.na(mi30[ , , i]))/
+	sum(!is.na(md00ygs[ , , i])))
+	rnk_per[i+2,6]<- 100 * (sum(!is.na(ifelse(mi31[ , ,i] >= 1, 1, NA)))/sum(!is.na(md00ygs[ , , i])))
+	rnk_per[i+2,7]<- 100 * (sum(!is.na(ifelse(mi32[ , ,i] >= 2, 1, NA)))/sum(!is.na(md00ygs[ , , i])))
+}
+
+for (i in 1:93){
+	rnk_per[i+4,8]<- 100 * (sum(!is.na(mi50[ , , i]))/
+	sum(!is.na(md00ygs[ , , i])))
+	rnk_per[i+4,9]<- 100 * (sum(!is.na(ifelse(mi51[ , ,i] >= 1, 1, NA)))/sum(!is.na(md00ygs[ , , i])))
+	rnk_per[i+4,10]<- 100 * (sum(!is.na(ifelse(mi52[ , ,i] >= 2, 1, NA)))/sum(!is.na(md00ygs[ , , i])))
+}
+
+rnk_per_m <- melt(rnk_per[,2:10])
+colnames(rnk_per_m) <- c("Threshold", "Percentage")
+rnk_per_m$Year <- rep(1918:2014, 9)
+rnk_per_m$Window <- substr(rnk_per_m$Threshold, 1, 9)
+rnk_per_m$Window <- rep(c("2 Year", "3 Year", "5 Year"), each = 291)
+
+rnk_graph <- ggplot(data = rnk_per_m, aes(x = Year, y = Percentage, color = Threshold)) + geom_ribbon(aes(ymin = 0, ymax = Percentage, fill = Threshold), color = "black") + scale_fill_manual(name = "SD > ... ",values = c("darkgoldenrod1", "chocolate1","brown2","darkgoldenrod2", "chocolate2","brown3","darkgoldenrod3", "chocolate3","brown4"), labels = c("0", "1", "2","0", "1", "2","0", "1", "2"))+ facet_grid(Window~., scale = "free") + theme_minimal() + labs(title = "Drought Window Lengths and Threshold Values for Moisture Deficit Anomalies",x = "Year", y = "Percentage Drought in Western States") 
+
+
+#Intensity
+mi20_sum<-(md00ygs[,,1:96]>=0)+(md00ygs[,,2:97]>=0)
+for (i in 1:96){
+mi20_sum[,,i]<-ifelse(mi20_sum[,,i]==2,((md00ygs[,,i])+(md00ygs[,,i+1])), NA)
+}
+mi21_sum<-(md00ygs[,,1:96]>=1)+(md00ygs[,,2:97]>=1)
+for (i in 1:96){
+mi21_sum[,,i]<-ifelse(mi21_sum[,,i]==2,((md00ygs[,,i])+(md00ygs[,,i+1])), NA)
+}
+mi22_sum<-(md00ygs[,,1:96]>=2)+(md00ygs[,,2:97]>=2)
+for (i in 1:96){
+mi22_sum[,,i]<-ifelse(mi22_sum[,,i]==2,((md00ygs[,,i])+(md00ygs[,,i+1])), NA)
+}
+
+mi30_sum<-(md00ygs[,,1:95]>=0)+(md00ygs[,,2:96]>=0)+(md00ygs[,,3:97]>=0)
+for (i in 1:95){
+mi30_sum[,,i]<-ifelse(mi30_sum[,,i]==3,((md00ygs[,,i])+(md00ygs[,,i+1])+(md00ygs[,,i+2])), NA)
+}
+mi31_sum<-(md00ygs[,,1:95]>=1)+(md00ygs[,,2:96]>=1)+(md00ygs[,,3:97]>=1)
+for (i in 1:95){
+mi31_sum[,,i]<-ifelse(mi31_sum[,,i]==3,((md00ygs[,,i])+(md00ygs[,,i+1])+(md00ygs[,,i+2])), NA)
+}
+mi32_sum<-(md00ygs[,,1:95]>=2)+(md00ygs[,,2:96]>=2)+(md00ygs[,,3:97]>=2)
+for (i in 1:95){
+mi32_sum[,,i]<-ifelse(mi32_sum[,,i]==3,((md00ygs[,,i])+(md00ygs[,,i+1])+(md00ygs[,,i+2])), NA)
+} 
+
+mi50_sum <- (md00ygs[,,1:93]>=0)+(md00ygs[,,2:94]>=0)+(md00ygs[,,3:95]>=0)+(md00ygs[,,4:96]>=0)+(md00ygs[,,5:97]>=0)
+for (i in 1:93){
+mi50_sum[,,i]<-ifelse(mi50_sum[,,i]==5,((md00ygs[,,i])+(md00ygs[,,i+1])+(md00ygs[,,i+2])+(md00ygs[,,i+3]) + (md00ygs[,,i+4])), NA)
+}
+mi51_sum <- (md00ygs[,,1:93]>=1)+(md00ygs[,,2:94]>=1)+(md00ygs[,,3:95]>=1)+(md00ygs[,,4:96]>=1)+(md00ygs[,,5:97]>=1) 
+for (i in 1:93){
+mi51_sum[,,i]<-ifelse(mi51_sum[,,i]==5,((md00ygs[,,i])+(md00ygs[,,i+1])+(md00ygs[,,i+2])+(md00ygs[,,i+3]) + (md00ygs[,,i+4])), NA)
+}        
+mi52_sum <- (md00ygs[,,1:93]>=2)+(md00ygs[,,2:94]>=2)+(md00ygs[,,3:95]>=2)+(md00ygs[,,4:96]>=2)+(md00ygs[,,5:97]>=2)  
+for (i in 1:93){
+mi52_sum[,,i]<-ifelse(mi52_sum[,,i]==5,((md00ygs[,,i])+(md00ygs[,,i+1])+(md00ygs[,,i+2])+(md00ygs[,,i+3]) + (md00ygs[,,i+4])), NA)
+}
+
+#replace the 3 year drought areas with their summed anomalies, then sum all the anomalies for the drought
+
+rnk_int <- data.frame(Year = 1918:2014, Intensity = NA)
+for (i in 1:96){
+	rnk_int[i+1,2]<- sum(mi20_sum[ , , i], na.rm = T)
+	rnk_int[i+1,3]<- sum(mi21_sum[ , , i], na.rm = T)
+	rnk_int[i+1,4]<- sum(mi22_sum[ , , i], na.rm = T)
+}
+
+for (i in 1:95){
+	rnk_int[i+2,5]<- sum(mi30_sum[ , , i], na.rm = T)
+	rnk_int[i+2,6]<- sum(mi31_sum[ , , i], na.rm = T)
+	rnk_int[i+2,7]<- sum(mi32_sum[ , , i], na.rm = T)
+}
+
+for (i in 1:93){
+	rnk_int[i+4,8]<- sum(mi50_sum[ , , i], na.rm = T)
+	rnk_int[i+4,9]<- sum(mi51_sum[ , , i], na.rm = T)
+	rnk_int[i+4,10]<- sum(mi52_sum[ , , i], na.rm = T)
+}
+
+rnk_int_m <- melt(rnk_int[,2:10])
+colnames(rnk_int_m) <- c("Threshold", "Intensity")
+rnk_int_m$Year <- rep(1918:2014, 9)
+rnk_int_m$Window <- substr(rnk_int_m$Threshold, 1, 9)
+rnk_int_m$Window <- rep(c("2 Year", "3 Year", "5 Year"), each = 291)
+
+#int_lab<- as.data.frame(cbind(rnk_int$Year[which(rnk_int$Intensity >= 2000)], rnk_int$Intensity[which(rnk_int$Intensity >= 2000)]))
+
+#int_grph <- ggplot(data = rnk_int_m, aes(x = Year, y = Intensity, color = Threshold)) + geom_line() + labs(title = "Sum of SD in drought areas, years -3 to 0", x = "Year", y = "Sum S.D.") + geom_label(data = int_lab, aes(x = V1, y = V2, label = V1), position = "jitter") +theme_minimal()
+
+
+int_graph <- ggplot(data = rnk_int_m, aes(x = Year, y = Intensity, color = Threshold)) + geom_ribbon(aes(ymin = 0, ymax = Intensity, fill = Threshold), color = "black") + scale_fill_manual(name = "SD > ... ",values = c("darkgoldenrod1", "chocolate1","brown2","darkgoldenrod2", "chocolate2","brown3","darkgoldenrod3", "chocolate3","brown4"), labels = c("0", "1", "2","0", "1", "2","0", "1", "2"))+ facet_grid(Window~., scale = "free") + theme_minimal() + labs(title = "Drought Intensity by year, by theshold and window lengths",x = "Year", y = "Drought Intensity in Western States") 
+
+
+mdfrq<-apply(mi31,c(1,2),sum,na.rm=T)
+mdfrq[mdfrq == 0] <- NA
+All = melt(mdfrq)
+frac_drght <- sum(!is.na(mdfrq))/26026
+
+mdfrq1_94<-apply(mi31[,,1:94],c(1,2),sum,na.rm=T)
+mdfrq1_94[mdfrq1_94 == 0] <- NA
+All_less = melt(mdfrq1_94)
+
+mdfrq1_48<-apply(mi31[,,1:48],c(1,2),sum,na.rm=T)
+mdfrq1_48[mdfrq1_48 == 0] <- NA
+Half1 = melt(mdfrq1_48)
+
+mdfrq48_95<-apply(mi31[,,48:95],c(1,2),sum,na.rm=T)
+mdfrq48_95[mdfrq48_95 == 0] <- NA
+Half2 = melt(mdfrq48_95)
+
+mdfrq48_94<-apply(mi31[,,48:94],c(1,2),sum,na.rm=T)
+mdfrq48_94[mdfrq48_94 == 0] <- NA
+Half_less = melt(mdfrq48_94)
+
+mdfrq95<-apply(mi31[,,95],c(1,2),sum,na.rm=T)
+mdfrq95[mdfrq95 == 0] <- NA
+Last1 = melt(mdfrq95)
+
+
+frq2 <- melt(data.frame(ac_All = All[,3], ad_Half1 = Half1[,3], ae_Half2 = Half2[,3], bc_All_less = All_less[,3], bd_Half_less = Half_less[,3], be_Last = Last1[,3]))
+
+frq2$variable <- rep(c("1920:2014","1920:1968","1968:2014","1920:2013","1968:2013","2014"), each = 26026)
+frq2$Lat <- rep(All[,1], 6)
+frq2$Lon <- rep(All[,2], 6)
+colnames(frq2) <- c("variable", "Counts", "Lat", "Lon")
+
+cnt_graph <- ggplot(frq2, aes(x = Lat, y = Lon)) + geom_tile(aes(fill = Counts)) + coord_equal() +  scale_fill_distiller(palette="Spectral", na.value="white") + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + facet_wrap(~ variable, ncol = 2, nrow = 3) + theme_minimal() + theme(strip.background = element_blank()) + ggtitle("Drought Core Occurrences")
+
+
+#Decadal count graphs
+mdfrq<-apply(mi31,c(1,2),sum,na.rm=T)
+mdfrq[mdfrq == 0] <- NA
+All1 = melt(mdfrq)
+frac_drght <- sum(!is.na(mdfrq))/26026
+
+mdfrq1_10<-apply(mi31[,,1:10],c(1,2),sum,na.rm=T)
+mdfrq1_10[mdfrq1_10 == 0] <- NA
+first2 = melt(mdfrq1_10)
+
+mdfrq11_20<-apply(mi31[,,11:20],c(1,2),sum,na.rm=T)
+mdfrq11_20[mdfrq11_20 == 0] <- NA
+second3 = melt(mdfrq11_20)
+
+mdfrq21_30<-apply(mi31[,,21:30],c(1,2),sum,na.rm=T)
+mdfrq21_30[mdfrq21_30 == 0] <- NA
+third4 = melt(mdfrq21_30)
+
+mdfrq31_40<-apply(mi31[,,31:40],c(1,2),sum,na.rm=T)
+mdfrq31_40[mdfrq31_40 == 0] <- NA
+fourth5 = melt(mdfrq31_40)
+
+mdfrq41_50<-apply(mi31[,,41:50],c(1,2),sum,na.rm=T)
+mdfrq41_50[mdfrq41_50 == 0] <- NA
+fifth6 = melt(mdfrq41_50)
+
+mdfrq51_60<-apply(mi31[,,51:60],c(1,2),sum,na.rm=T)
+mdfrq51_60[mdfrq51_60 == 0] <- NA
+sixth7 = melt(mdfrq51_60)
+
+mdfrq61_70<-apply(mi31[,,61:70],c(1,2),sum,na.rm=T)
+mdfrq61_70[mdfrq61_70 == 0] <- NA
+seventh8 = melt(mdfrq61_70)
+
+mdfrq71_80<-apply(mi31[,,71:80],c(1,2),sum,na.rm=T)
+mdfrq71_80[mdfrq71_80 == 0] <- NA
+eighth9 = melt(mdfrq71_80)
+
+mdfrq81_90<-apply(mi31[,,81:90],c(1,2),sum,na.rm=T)
+mdfrq81_90[mdfrq81_90 == 0] <- NA
+ninth0 = melt(mdfrq81_90)
+
+mdfrq91_95<-apply(mi31[,,91:95],c(1,2),sum,na.rm=T)
+mdfrq91_95[mdfrq91_95 == 0] <- NA
+tenth11 = melt(mdfrq91_95)
+
+
+frq3 <- melt(data.frame(All = All1[,3], first = first2[,3], second = second3[,3], third = third4[,3], fourth = fourth5[,3], fifth = fifth6[,3], sixth = sixth7[,3], seventh = seventh8[,3], eighth = eighth9[,3], ninth = ninth0[,3], tenth = tenth11[,3]))
+
+frq3$variable <- rep(c("1920:2014","1920:1929","1930:1939","1940:1949","1950:1959","1960:1969","1970:1979","1980:1989","1990:1999","2000:2009","2010:2015"), each = 26026)
+frq3$Lat <- rep(All[,1], 11)
+frq3$Lon <- rep(All[,2], 11)
+colnames(frq3) <- c("variable", "Occurrence", "Lat", "Lon")
+frq3$variable <- factor(frq3$variable, levels = c("1920:2014","1920:1929","1930:1939","1940:1949","1950:1959","1960:1969","1970:1979","1980:1989","1990:1999","2000:2009","2010:2015"))
+
+cnt_graph2 <- ggplot(frq3, aes(x = Lat, y = Lon)) + geom_tile(aes(fill = Occurrence)) + coord_equal() +  scale_fill_distiller(palette="Spectral", na.value="white") + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + facet_wrap(~ variable, ncol = 4, nrow = 3) + theme_minimal() + theme(strip.background = element_blank()) + ggtitle("Drought core occurrence by decade") + theme(legend.position = c(.85, .2))
+
+#We have identified 2014, 1931, 1936, 1956, 2002, and 1961 as the years that deserve a closer look.  The plot from this code will be a 3 x 6 plot, with the year in question as the rightmost plot.
+#1929:31, 34:36, 54:56, 59:61, 00:02, 12:14
+mi1 <- ifelse((md00ygs[,,1:97]>=1)==1,1,NA)
+mi1r <- md00ygs * mi1
+mi21r <- md00ygs[,,2:97] * mi21
+mi31r <- md00ygs[,,3:97] * mi31
+dimnames(mi1r)[[3]] <- 1918:2014
+dimnames(mi21r)[[3]] <- 1919:2014
+dimnames(mi31r)[[3]] <- 1920:2014
+
+nn <- melt(data.frame("1929" = melt(mi1r[,,"1929"])[,3],"1930" = melt(mi21r[,,"1930"])[,3],"1931" = melt(mi31r[,,"1931"])[,3],"1934" = melt(mi1r[,,"1934"])[,3],"1935" = melt(mi21r[,,"1935"])[,3],"1936" = melt(mi31r[,,"1936"])[,3],"1954" = melt(mi1r[,,"1954"])[,3],"1955" = melt(mi21r[,,"1955"])[,3],"1956" = melt(mi31r[,,"1956"])[,3],"1959" = melt(mi1r[,,"1959"])[,3],"1960" = melt(mi21r[,,"1960"])[,3],"1961" = melt(mi31r[,,"1961"])[,3],"2000" = melt(mi1r[,,"2000"])[,3],"2001" = melt(mi21r[,,"2001"])[,3],"2002" = melt(mi31r[,,"2002"])[,3],"2012" = melt(mi1r[,,"2012"])[,3],"2013" = melt(mi21r[,,"2013"])[,3],"2014" = melt(mi31r[,,"2014"])[,3]))
+
+nn$Lat <- rep(melt(mi31r[,,"2014"])[,2], 18)
+nn$Lon <- rep(melt(mi31r[,,"2014"])[,1], 18)
+nn$Year <- rep(c(1931,1936,1956,1961,2002,2014), each = 26026*3 )
+nn$Period <- rep(c("a","b","c"), each = 26026)
+
+map_plt <- ggplot(nn) + geom_tile(aes(x = Lon, y = Lat, fill = value)) + coord_equal() + xlim(c(-124.6875, -102.0625)) + ylim(c(31.1875, 48.9375)) + geom_path(data = map_data("state"), aes(x = long, y = lat, group = group), color = "grey50") + scale_fill_distiller(palette="Spectral", na.value="white") + facet_grid(Period~Year) + theme_minimal() 
+#This graph shows the progression of drought cores, with values equal to that years md00 zscores.  c is the final year in the 3 year window, a is two years before
+
+
+#Line plots of md0, md00, tavg, and prec, for five years leading to the drought year, maybe one additional year, by water year.
+dimnames(mi31)[[3]] <- 1920:2014
+
+#each years core is expanded over the entire dataset.
+mi3114 <- melt(aperm(apply(mi31[,,"2014"], 1:2, function(x) rep(x, each = 1164)), c(2,3,1)))
+mi3102 <- melt(aperm(apply(mi31[,,"2002"], 1:2, function(x) rep(x, each = 1164)), c(2,3,1)))
+mi3161 <- melt(aperm(apply(mi31[,,"1961"], 1:2, function(x) rep(x, each = 1164)), c(2,3,1)))
+mi3156 <- melt(aperm(apply(mi31[,,"1956"], 1:2, function(x) rep(x, each = 1164)), c(2,3,1)))
+mi3136 <- melt(aperm(apply(mi31[,,"1936"], 1:2, function(x) rep(x, each = 1164)), c(2,3,1)))
+mi3131 <- melt(aperm(apply(mi31[,,"1931"], 1:2, function(x) rep(x, each = 1164)), c(2,3,1)))
+
+
+```
+
+```{r renamed all_var}
+
+#add to all_var before masking
+all_var$mi3114 <- mi3114$value
+all_var$mi3102 <- mi3102$value
+all_var$mi3161 <- mi3161$value
+all_var$mi3156 <- mi3156$value
+all_var$mi3136 <- mi3136$value
+all_var$mi3131 <- mi3131$value
+
+#subset by year
+all_var14<- filter(all_var, water_year >= 2009)
+all_var02 <- filter(all_var, water_year >= 1997 & water_year <=2007)
+all_var61 <- filter(all_var, water_year >= 1956 & water_year <=1966)
+all_var56 <- filter(all_var, water_year >= 1951 & water_year <= 1961)
+all_var36 <- filter(all_var, water_year >= 1931 & water_year <= 1941)
+all_var31 <- filter(all_var, water_year >= 1926 & water_year <= 1936)
+
+#Mask prec, tavg, and md00mgs
+#2014
+all_var14$mmd <- all_var14$mi3114 * all_var14$md00mgs
+all_var14$mmm <- all_var14$mi3114 * all_var14$md0stan_an
+all_var14$pmc <- all_var14$mi3114 * all_var14$precstan_an
+all_var14$tmv <- all_var14$mi3114 * all_var14$tavgstan_an
+#2002
+all_var02$mmd <- all_var02$mi3102 * all_var02$md00mgs
+all_var02$mmm <- all_var02$mi3114 * all_var02$md0stan_an
+all_var02$pmc <- all_var02$mi3102 * all_var02$precstan_an
+all_var02$tmv <- all_var02$mi3102 * all_var02$tavgstan_an
+#1961
+all_var61$mmd <- all_var61$mi3161 * all_var61$md00mgs
+all_var61$mmm <- all_var61$mi3114 * all_var61$md0stan_an
+all_var61$pmc <- all_var61$mi3161 * all_var61$precstan_an
+all_var61$tmv <- all_var61$mi3161 * all_var61$tavgstan_an
+#1956
+all_var56$mmd <- all_var56$mi3156 * all_var56$md00mgs
+all_var56$mmm <- all_var56$mi3114 * all_var56$md0stan_an
+all_var56$pmc <- all_var56$mi3156 * all_var56$precstan_an
+all_var56$tmv <- all_var56$mi3156 * all_var56$tavgstan_an
+#1936
+all_var36$mmd <- all_var36$mi3136 * all_var36$md00mgs
+all_var36$mmm <- all_var36$mi3114 * all_var36$md0stan_an
+all_var36$pmc <- all_var36$mi3136 * all_var36$precstan_an
+all_var36$tmv <- all_var36$mi3136 * all_var36$tavgstan_an
+#1931
+all_var31$mmd <- all_var31$mi3131 * all_var31$md00mgs
+all_var31$mmm <- all_var31$mi3114 * all_var31$md0stan_an
+all_var31$pmc <- all_var31$mi3131 * all_var31$precstan_an
+all_var31$tmv <- all_var31$mi3131 * all_var31$tavgstan_an
+
+sub_var <- data.frame(A1931 = all_var31$mmd, A1936 = all_var36$mmd, A1956 = all_var56$mmd, A1961 = all_var61$mmd,A2002 = all_var02$mmd, A2014 = NA,B1931 = all_var31$mmm, B1936 = all_var36$mmm, B1956 = all_var56$mmm, B1961 = all_var61$mmm,B2002 = all_var02$mmm, B2014 = NA, C1931 = all_var31$pmc, C1936 = all_var36$pmc, C1956 = all_var56$pmc, C1961 = all_var61$pmc,C2002 = all_var02$pmc, C2014 = NA, D1931 = all_var31$tmv, D1936 = all_var36$tmv, D1956 = all_var56$tmv, D1961 = all_var61$tmv,D2002 = all_var02$tmv, D2014 = NA)
+sub_var[1:1951950,  "A2014"] <- all_var14$mmd
+sub_var[1:1951950,  "B2014"] <- all_var14$mmm
+sub_var[1:1951950,  "C2014"] <- all_var14$pmc
+sub_var[1:1951950,  "D2014"] <- all_var14$tmv
+
+
+#sub_var[,"year"] <- rep(-5:5, each = (12*143*182))
+sub_var_m <- melt(sub_var)
+sub_var_m$year <- as.factor(rep(rep(-5:5, each = (12*143*182)), 24))
+sub_var_m$rel <- substr(sub_var_m$variable, 1,1)
+sub_var_m$leg <- substr(sub_var_m$variable, 2,5)
+
+bx_graph <- ggplot(sub_var_m, aes(x = year, y = value, fill = leg)) + geom_boxplot() + facet_grid(rel~., scales = "free") + theme_minimal() + labs(title = "Variables at Cores", x = "Years Before/After Third Year of Drought", y = "Standarized Value", color = "Drought Year") 
+
+
+aa<- data.frame(aggregate(mi3114 ~ wateryear, data= sub_var, mean, na.rm = T, na.action = NULL), "a")
+colnames(aa) <-  c("year","value","letter")
+aa <- aa[92:97,]
+bb<- data.frame(aggregate(mi3102 ~ wateryear, data= sub_var, mean, na.rm = T, na.action = NULL), "b")
+colnames(bb) <- c("year","value","letter")
+bb <- bb[80:85,]
+cc<-data.frame(aggregate(mi3161 ~ wateryear, data= sub_var, mean, na.rm = T, na.action = NULL), "c")
+colnames(cc) <- c("year","value","letter")
+cc <- cc[39:44,]
+dd<-data.frame(aggregate(mi3156 ~ wateryear, data= sub_var, mean, na.rm = T, na.action = NULL), "d")
+colnames(dd) <- c("year","value","letter")
+dd <- dd[34:39,]
+ee<-data.frame(aggregate(mi3136 ~ wateryear, data= sub_var, mean, na.rm = T, na.action = NULL), "e")
+colnames(ee) <- c("year","value","letter")
+ee <- ee[14:19,]
+ff<-data.frame(aggregate(mi3131 ~ wateryear, data= sub_var, mean, na.rm = T, na.action = NULL), "f")
+colnames(ff) <- c("year","value","letter")
+ff <- ff[9:14,]
+
+men_var<- rbind(ff,ee,dd,cc,bb,aa)
+men_var$rel <- rep(-5:0,6)
+ln_graph <- ggplot(men_var, aes(x = rel, y = value, color = letter)) + geom_line() + theme_minimal()
+
+```
+
+```{r bam plots}
+
+dn_bam <- bam(md0stan_an ~ s(precstan_an, tavgstan_an), data = veg_dr_lv)
+vis.gam(dn_bam, view = c("prec","tavg"), plot.type = "contour", too.far = .1)
+
+newdata <- data.frame(precs = rep(seq(-1.04724, 14.92760, length.out = 200), 200), tavgs = rep(seq(-3.5408, 3.4682, length.out = 2000), each = 200))
+newdata$md0s <- predict.gam(dn_bam, newdata)
+ 
+
+
+bi14 <- filter(mi3114, value == 1)
+lat14 <- unique(bi14$X2)
+lon14 <- unique(bi14$X1)
+pnts <- filter(veg_dr_14, year == 2014 & lat %in% lat14 & lon %in% lon14)
+
+bi31 <- filter(mi3131, value == 1)
+lat31 <- unique(bi31$X2)
+lon31 <- unique(bi31$X1)
+pnts2 <- filter(veg_dr_14, year == 1931 & lat %in% lat31 & lon %in% lon31)
+
+bi36 <- filter(mi3136, value == 1)
+lat36 <- unique(bi36$X2)
+lon36 <- unique(bi36$X1)
+pnts4 <- filter(veg_dr_14, year == 1936 & lat %in% lat36 & lon %in% lon36)
+
+bi02 <- filter(mi3102, value == 1)
+lat02 <- unique(bi02$X2)
+lon02 <- unique(bi02$X1)
+pnts3 <- filter(veg_dr_14, year == 2002 & lat %in% lat02 & lon %in% lon02)
+
+
+prtvmd_plt1 <- ggplot(newdata, aes(x = precs, y = tavgs)) + geom_raster(aes(fill = md0s)) + stat_contour(aes(z = md0s), color = "black") + geom_point(data = pnts, aes(x = precs, y = tavgs), shape = 4, size = .5, alpha = 1/10, color = "black")  + scale_fill_distiller(palette = "YlOrBr") + theme_minimal() + labs(title = "Moisture Deficit as function of Precipitation, Temperature, 2014 points", x = "Normalized Cumulative Water-Year Precipitation", y = "Normalized Average Water-Year Temperature")
+
+prtvmd_plt2 <- ggplot(newdata, aes(x = precs, y = tavgs)) + geom_raster(aes(fill = md0s)) + stat_contour(aes(z = md0s), color = "black") + geom_point(data = pnts2, aes(x = precs, y = tavgs), shape = 4, size = .5, alpha = 1/10, color = "black")  + scale_fill_distiller(palette = "YlOrBr") + theme_minimal() + labs(title = "Moisture Deficit as function of Precipitation, Temperature, 1931 points", x = "Normalized Cumulative Water-Year Precipitation", y = "Normalized Average Water-Year Temperature")
+
+prtvmd_plt3 <- ggplot(newdata, aes(x = precs, y = tavgs)) + geom_raster(aes(fill = md0s)) + stat_contour(aes(z = md0s), color = "black") + geom_point(data = pnts3, aes(x = precs, y = tavgs), shape = 4, size = .5, alpha = 1/10, color = "black")  + scale_fill_distiller(palette = "YlOrBr") + theme_minimal() + labs(title = "Moisture Deficit as function of Precipitation, Temperature, 2002 points", x = "Normalized Cumulative Water-Year Precipitation", y = "Normalized Average Water-Year Temperature")
+
+prtvmd_plt4 <- ggplot(newdata, aes(x = precs, y = tavgs)) + geom_raster(aes(fill = md0s)) + stat_contour(aes(z = md0s), color = "black") + geom_point(data = pnts4, aes(x = precs, y = tavgs), shape = 4, size = .5, alpha = 1/10, color = "black")  + scale_fill_distiller(palette = "YlOrBr") + theme_minimal() + labs(title = "Moisture Deficit as function of Precipitation, Temperature, 1936 points", x = "Normalized Cumulative Water-Year Precipitation", y = "Normalized Average Water-Year Temperature")
+
+
+```
+
+```{r line graph}
+
+#find the area of maximum pixels for a given year
+image(as.numeric(dimnames(mi31)[[1]]),as.numeric(dimnames(mi31)[[2]]),mi31[,,"1936"],col=c('brown'), main= paste("Drought Cores in 1936"),xlab="Latitude", ylab="Longitude")
+library(maps)
+	map('state',add=TRUE)
+	?map	
+locator(n=4) #locate the area of most pixels, then find the closest dimnames
+#$x located x values
+#[1] -117.9449 -117.8956 -117.8956 -106.5110
+#-117.9375, -117.8125, -117.8125, -106.5625
+#$y located y values
+#[1] 47.71510 43.36737 47.94384 47.87217
+# 47.6875, 43.3125, 47.9375, 47.8125
+abline(h=47.71510, v=-117.8956) #found values
+abline(h=43.36737, v= -106.5110)
+
+abline(h=47.6875, v=-117.8125)
+abline(h=43.3125, v=-106.5625)
+#x=56,146
+#y=98,133
+md00ygs3i36<- mi31[,,"1936"]
+dim(md00ygs3i36)
+#182 143
+m3i36c<-sum(!is.na(md00ygs3i36[56:146,98:133] ))
+
+image(as.numeric(dimnames(mi31)[[1]]),as.numeric(dimnames(mi31)[[2]]),mi31[,,"1931"],col=c('brown'), main= paste("Drought Cores in 1931"),xlab="Latitude", ylab="Longitude")
+	map('state',add=TRUE)
+locator(n=4)
+#$x
+#[1] -124.4171 (-124.6875) (1) -124.4574 -124.6099 -113.4393 (-113.4375) (91)
+#$y
+#[1] 49.00132 (48.9375) (143) 45.12190 (45.0625) (120) 49.01696 48.99381
+
+abline(h=48.9375, v=-124.6875)
+abline(h=45.0625, v= -113.4375)
+md00ygs3i31<- mi31[,,"1931"]
+dimnames(md00ygs3i31)
+
+m3i31c<-sum(!is.na(md00ygs3i31[1:91,120:143]))
+m3i31c
+
+image(as.numeric(dimnames(mi31)[[1]]),as.numeric(dimnames(mi31)[[2]]),mi31[,,"2002"],col=c('brown'), main= paste("Drought Cores in 2002"),xlab="Latitude", ylab="Longitude")
+	map('state',add=TRUE)
+locator(n=4)
+#$x
+#[1] -110.9902 (-110.9375)(111) -105.0635 (-105.3125)(156) -105.3395 -105.2079
+
+#$y
+#[1] 45.11099 44.93118 45.04627 (45.0625)(120) 38.53124 (38.5625)(60)
+
+abline(h=45.0625, v=-110.9375)
+abline(h=38.5625, v=-105.3125)
+md00ygs3i02<- mi31[,,"2002"]
+m3i02c<-sum(!is.na(md00ygs3i02[111:156,60:120]))
+m3i02c
+
+image(as.numeric(dimnames(mi31)[[1]]),as.numeric(dimnames(mi31)[[2]]),mi31[,,"2014"],col=c('brown'), main= paste("Drought Cores in 2014"),xlab="Latitude", ylab="Longitude")
+	map('state',add=TRUE)
+locator(n=4)
+#$x
+#[1] -123.2477 (-123.3125)(12) -115.9701(-116.1875)(69)
+
+#$y
+#[1] 41.98525 (42.0625)(88) 31.11596 (31.1875)(1)
+
+abline(h=42.0625, v=-123.3125)
+abline(h=31.1875, v=-116.1875)
+md00ygs3i14<- mi31[,,"2014"]
+dimnames(md00ygs3i13)
+m3i14c<-sum(!is.na(md00ygs3i14[12:69,1:88]))
+
+image(as.numeric(dimnames(mi31)[[1]]),as.numeric(dimnames(mi31)[[2]]),mi31[,,"1956"],col=c('brown'), main= paste("Drought Cores in 2001"),xlab="Latitude", ylab="Longitude")
+	map('state',add=TRUE)
+locator(n=4)
+#$x
+#[1] -101.8426 (-102.0625)(181) -105.0286 (-104.9375)(159)
+
+#$y
+#[1] 36.99814 (36.9375)(47) 40.98126 (40.9375)(79)
+#or
+#$x
+#[1] -111.0248 (-111.0625)(110) -105.3512 (-105.3125)(156)
+
+#$y
+#[1] 40.16575 (40.1875)(73) 43.38140 (43.4375) (99)
+
+abline(h=40.1875, v=-111.0625)
+abline(h=43.4375, v=-105.3125)
+md00ygs3i56<- mi31[,,"1956"]
+m3i56c<-sum(!is.na(md00ygs3i56[110:156,73:99]))
+
+m3i56c
+#248 for first set, 287 for second
+
+image(as.numeric(dimnames(mi31)[[1]]),as.numeric(dimnames(mi31)[[2]]),mi31[,,"1961"],col=c('brown'), main= paste("Drought Cores in 1961"),xlab="Longitude", ylab="Latitude")
+	map('state',add=TRUE)
+locator(n=4)
+#$x
+#[1] -109.8156 (-109.8125)(120) -101.9224 (-102.0625)(182)
+
+#$y
+#[1] 42.18642 (42.1875)(89) 48.99620 (48.9375)(143)
+
+abline(h=42.1875, v=-109.8125)
+abline(h=48.9375, v=-102.0625)
+md00ygs3i61<- mi31[,,"1961"]
+dimnames(md00ygs3i61)
+m3i61c<-sum(!is.na(md00ygs3i61[120:182,89:143]))
+
+m3i31c
+#[1] 976
+#$x [1] -118.1864 $y [1] 48.38353
+m3i36c
+#[1] 843
+#$x [1] -111.9506 $y [1] 45.72283
+m3i56c
+#[1] 287
+#$x [1] -107.5186 $y [1] 41.79676 second set
+#[1] 248
+#$x [1] -102.7178 $y [1] 39.25717 first set
+m3i61c
+#[1] 271
+#$x [1] -106.9636 $y [1] 44.98155 general quadrant
+m3i02c
+#[1] 533
+#$x [1] -108.8293 $y [1] 42.94604
+m3i14c
+#[1] 1138
+#$x [1] -119.9603 $y [1] 38.16343
+m3i<-cbind(m3i31c, m3i36c,m3i56c,m3i61c,m3i02c,m3i14c)
+m3i<-as.data.frame(m3i)
+colnames(m3i)<- c("1931", "1936", "1956", "1961", "2002", "2014")
+row.names(m3i)<-c("Pixels", "Long", "Lat", "Location")
+m3i[2,]<-c (-118.1875,-111.9375,-107.5625,-106.9375,-108.8125,-119.9375)
+m3i[3,]<-c(48.4375,45.6875,41.8125,44.9375,42.9375,38.1875)
+m3i[4,]<-c("Pacific Northwest","Rockies","Rockies","Great Plains","Rockies", "Sierra Nevada")
+
+save(m3i, file= "CoreInformation.rda")
+
+
+
+#Graphing five years before/after of cores for 1930,35,55,60,2001,2013
+tempy31<-aperm(apply(mi31[,,"1931"],1:2,rep,rep(97)),c(2,3,1))*aperm(apply(md00yg,1:2,scale), c(2,3,1))
+tempy31l<-as.numeric(rapply(as.list(apply(tempy31,3,mean,na.rm=T)),f=function(x) ifelse(is.nan(x),0,x), how="replace"))
+
+#1935
+tempy36<-aperm(apply(mi31[,,"1936"],1:2,rep,rep(97)),c(2,3,1))*aperm(apply(md00yg,1:2,scale), c(2,3,1))
+tempy36l<-as.numeric(rapply(as.list(apply(tempy36,3,mean,na.rm=T)),f=function(x) ifelse(is.nan(x),0,x), how="replace"))
+
+#1955
+tempy56<-aperm(apply(mi31[,,"1956"],1:2,rep,rep(97)),c(2,3,1))*aperm(apply(md00yg,1:2,scale), c(2,3,1))
+tempy56l<-as.numeric(rapply(as.list(apply(tempy56,3,mean,na.rm=T)),f=function(x) ifelse(is.nan(x),0,x), how="replace"))
+
+#1960
+tempy61<-aperm(apply(mi31[,,"1961"],1:2,rep,rep(97)),c(2,3,1))*aperm(apply(md00yg,1:2,scale), c(2,3,1))
+tempy61l<-as.numeric(rapply(as.list(apply(tempy61,3,mean,na.rm=T)),f=function(x) ifelse(is.nan(x),0,x), how="replace"))
+
+#2001
+tempy02<-aperm(apply(mi31[,,"2002"],1:2,rep,rep(97)),c(2,3,1))*aperm(apply(md00yg,1:2,scale), c(2,3,1))
+tempy02l<-as.numeric(rapply(as.list(apply(tempy02,3,mean,na.rm=T)),f=function(x) ifelse(is.nan(x),0,x), how="replace"))
+
+#2013
+tempy14<-aperm(apply(mi31[,,"2014"],1:2,rep,rep(97)),c(2,3,1))*aperm(apply(md00yg,1:2,scale), c(2,3,1))
+tempy14l<-as.numeric(rapply(as.list(apply(tempy14,3,mean,na.rm=T)),f=function(x) ifelse(is.nan(x),0,x), how="replace"))
+
+sum(!is.na(tempy31[,,1]))
+sum(!is.na(tempy36[,,1]))
+sum(!is.na(tempy56[,,1]))
+sum(!is.na(tempy61[,,1]))
+sum(!is.na(tempy02[,,1]))
+sum(!is.na(tempy14[,,1]))
+
+
+tempy31l<-as.data.frame(tempy31l)
+tempy36l<-as.data.frame(tempy36l)
+tempy56l<-as.data.frame(tempy56l)
+tempy61l<-as.data.frame(tempy61l)
+tempy02l<-as.data.frame(tempy02l)
+tempy14l<-as.data.frame(tempy14l)
+rownames(tempy31l)<-1918:2014
+rownames(tempy36l)<-1918:2014
+rownames(tempy56l)<-1918:2014
+rownames(tempy61l)<-1918:2014
+rownames(tempy02l)<-1918:2014
+rownames(tempy14l)<-1918:2014
+coremeans<-data.frame(Core31=tempy31l[(1927-1918):(1937-1918),c("tempy31l")], Core36=tempy36l[(1932-1918):(1942-1918),c("tempy36l")], Core56=tempy56l[(1952-1918):(1962-1918),c("tempy56l")], Core61=tempy61l[(1957-1918):(1967-1918),c("tempy61l")],
+Core02=tempy02l[(1998-1918):(2008-1918),c("tempy02l")])
+coremeans$Core14<-NA
+coremeans[1:6, "Core14"] = tempy14l[92:97,c("tempy14l")]
+coremeans$Year <- -5:5
+
+colnames(coremeans)<- c("1931", "1936", "1956", "1961", "2002", "2014","Year")
+
+
+plot(coremeans$Core30, type="l")
+lines(coremeans$Core35, type="l")
+lines(coremeans$Core55, type="l")
+lines(coremeans$Core60, type="l")
+lines(coremeans$Core01, type="l")
+lines(coremeans$Core13, type="l")
+
+
+coremelt<-melt(coremeans, id.vars='Year', variable.name="series") 
+coremelt[,4]<-rep(c("Pacific Northwest","Rockies","Rockies","Great Plains","Rockies","Sierra Nevada"), each=11)
+coremelt[,5]<-rep(c(976,843,287,271,533,1138),each=11)
+coremelt[,6]<-rep(c(-118.1875,-111.9375,-107.5625,-106.9375,-108.8125,-119.9375),each=11)
+coremelt[,7]<-rep(c(48.4375,45.6875,41.8125,44.9375,42.9375,38.1875),each=11)
+colnames(coremelt)<-c("Year","variable","value","Region","Cells","Long","Lat")
+
+
+g<-ggplot(coremelt, aes(Year, value))  
+dd<-subset(coremelt, Year==5)
+dd31<-subset(coremelt, Year == 3 & variable == 1931 )
+dd36<-subset(coremelt, Year == -2 & variable == 1936 )
+dd56<-subset(coremelt, Year == 1 & variable == 1956 )
+dd61<-subset(coremelt, Year == 4 & variable == 1961)
+dd02<-subset(coremelt, Year == -4 & variable == 2002 )
+dd14<-subset(coremelt, Year == 0 & variable == 2014 )
+
+dt<-dd[1:5,]
+di<-coremelt[61,]
+
+
+ln_graph <- g+ geom_line(aes(y=value, x=Year,colour=variable))  + theme_bw() +theme(legend.position= 'none')+ geom_point(size=1, shape=21, fill="white") + geom_hline(yintercept= 0, color = "black", alpha = 0.5)+geom_vline(xintercept= 0, color = "black", alpha = 0.5) + geom_text(data=dd31, aes(x=3, y=value+.25, label= paste(variable, Region, Cells, sep= ","), color = variable)) + geom_text(data=dd36, aes(x=-2, y=value+.25, label= paste(variable, Region, Cells, sep= ","), color = variable)) + geom_text(data=dd56, aes(x=1, y=value-.25, label= paste(variable, Region, Cells, sep= ","), color = variable)) + geom_text(data=dd61, aes(x=4, y=value-.25, label= paste(variable, Region, Cells, sep= ","), color = variable))+ geom_text(data=dd02, aes(x=-4+1.1, y=value, label= paste(variable, Region, Cells, sep= ","), color = variable))+ geom_text(data=dd14, aes(x=0+.5, y=value+.1, label= paste(variable, Region, Cells, sep= ","), color = variable))+ ggtitle("Scaled Annual Moisture Deficit, Core Locations, Pixels of Largest Continuous Area") 
 
 
 ```{r saving}
